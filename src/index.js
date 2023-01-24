@@ -1,33 +1,37 @@
 import {Engine, Render, Runner, Bodies, Composite, Constraint, Mouse, MouseConstraint, Body } from "matter-js";
 
 
+
+
+const init = () => {
+
+const {innerWidth, innerHeight} = window;
+const screenWidth = Math.max(innerWidth, 150);
+const screenHeight = Math.max(innerHeight - 100, screenWidth)
+const WHEEL_RADIUS = screenWidth / 3
 // create an engine
 const engine = Engine.create();
-
+console.log(screenWidth)
 // create a renderer
 const render = Render.create({
     element: document.body,
-    engine: engine
+    engine: engine,
+    options: {
+        width: screenWidth,
+    height: screenHeight,
+    }
 });
 
 
 const wheelGroup = Body.nextGroup(true);
-const WHEEL_RADIUS = 200
+
 const pegStopperCategory = 0x0001
 const wheelMouse = 0x0002
-// create two boxes and a ground
-const wheel = Bodies.circle(400, 200, WHEEL_RADIUS, {
-    collisionFilter: {
-        group: wheelGroup,
-        category: wheelMouse
-    },
-    render: {
-        strokeStyle: '#ffffff',
-        sprite: {
-            texture: './wheel.png'
-        }
-    }
-});
+
+const wheelCenterX = screenWidth / 2
+const stopperX = wheelCenterX
+const stopperY = 90;
+const wheelCenterY = WHEEL_RADIUS + stopperY + 10
 
 const getXYCoords = (angle, radius, offset) => ({
     x: (radius - offset) * Math.sin(Math.PI * 2 * angle / 360),
@@ -35,8 +39,8 @@ const getXYCoords = (angle, radius, offset) => ({
 });
 
 const PEGS = 20
-const stopperX = 400;
-const stopper = Bodies.rectangle(stopperX, 90, 6, 40, {
+
+const stopper = Bodies.rectangle(stopperX, stopperY, 6, 40, {
     collisionFilter: {
         group: wheelGroup,
         mask: pegStopperCategory,
@@ -49,11 +53,35 @@ const stopperBaseRight = Bodies.rectangle(stopperX + 30, 75, 40, 40, {
 isStatic: true,
 });
 const nail = Constraint.create({
-    pointA: {x: 400, y: 90},
+    pointA: {x: wheelCenterX, y: 90},
     pointB: {x: 0, y: -10},
     bodyB: stopper,
     length: 0,
     damping: 0.1,
+    stiffness: 1
+})
+
+
+
+
+const wheel = Bodies.circle(wheelCenterX, wheelCenterY, WHEEL_RADIUS, {
+    collisionFilter: {
+        group: wheelGroup,
+        category: wheelMouse
+    },
+    render: {
+        strokeStyle: '#ffffff',
+        sprite: {
+            texture: './wheel.png'
+        }
+    }
+});
+
+const spinnerConstraint = Constraint.create({
+    bodyA: wheel,
+    pointA: {x: 0, y: 0 },
+    pointB: { x: wheelCenterX, y: wheelCenterY },
+    length: 0,
     stiffness: 1
 })
 
@@ -75,17 +103,6 @@ const entities = Array.from({length: PEGS }).map((_, i)=>{
     })
     return [peg, pegConstraint]
 }).flat()
-
-
-
-const spinnerConstraint = Constraint.create({
-    bodyA: wheel,
-    pointA: {x: 0, y: 0 },
-    pointB: { x: 400, y: 300 },
-    length: 0,
-    stiffness: 1
-})
-
 
 // add mouse control
 var mouse = Mouse.create(render.canvas),
@@ -116,3 +133,8 @@ const runner = Runner.create();
 
 // run the engine
 Runner.run(runner, engine);
+
+}
+
+
+document.addEventListener("DOMContentLoaded", init);
