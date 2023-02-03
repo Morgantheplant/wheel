@@ -2,6 +2,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import terser from '@rollup/plugin-terser';
+import jsx from 'rollup-plugin-jsx'
 
 const isProduction = process.env.NODE_ENV === 'production'
 
@@ -23,6 +24,7 @@ export default {
       ]
   },
   plugins: [
+    jsx( { factory: "_render.createElement" } ),
     json(), 
     resolve({
       jsnext: true,
