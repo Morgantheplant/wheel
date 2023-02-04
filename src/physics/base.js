@@ -45,8 +45,8 @@ export const initPhysics = (store) => {
   const stopperEntities = createStopperEntities({
     stopperX: wheelCenterX,
     stopperY: 90,
-    stopperHeight: 6,
-    stopperWidth: 40,
+    stopperHeight: 8,
+    stopperWidth: 44,
     stopperCollisionFilter: {
         group: wheelGroup,
         mask: pegStopperCategory,

@@ -8,18 +8,23 @@ const getXYCoords = (angle, radius, offset) => ({
 
 export const createPegEntities = ({ pegCount, wheelRadius, offset, collisionFilterMask, wheel }) =>{
     const angle = 360 / pegCount;
+    
     const pegEntities = Array.from({ length: pegCount }).reduce((acc, _, i) => {
-        
-        const peg = Bodies.circle(0, 0, 10, {
+      const coords = getXYCoords(360 - i * angle, wheelRadius, offset || 10)
+        const peg = Bodies.circle(coords.x, coords.y, 10, {
           collisionFilter: {
             mask: collisionFilterMask,
           },
           id: selectPeg(i),
+
         });
+
+        peg.initialXPosition = coords.x
+        peg.initialYPosition = coords.y
 
         const pegConstraint = Constraint.create({
           bodyA: wheel,
-          pointA: getXYCoords(360 - i * angle, wheelRadius, offset || 10),
+          pointA: coords,
           pointB: { x: 0, y: 0 },
           length: 0,
           bodyB: peg,

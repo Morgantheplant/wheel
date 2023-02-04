@@ -4,6 +4,7 @@ import { findBodyById } from "../../selectors/findBodyById";
 import { Peg } from "./Peg";
 import { WheelSlice } from "./WheelSlice";
 import { PEG_COUNT, WHEEL_RADIUS } from "../../settings";
+import { WheelText } from "./WheelText";
 
 const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
 const wheelTransform = (body = {}) => {
@@ -11,11 +12,13 @@ const wheelTransform = (body = {}) => {
     r: body.circleRadius,
     cx: body.position.x,
     cy: body.position.y,
-    // style: {
-    //   transform: `rotate(${body.angle}rad)`,
-    //   "transform-origin": "center center",
-    //   "transform-box": "fill-box"
-    // },
+    cx: 700 / 2,
+    cy: WHEEL_RADIUS + stopperY + 10,
+    style: {
+      transform: `rotate(${body.angle}rad)`,
+      "transform-origin": "center center",
+      "transform-box": "fill-box",
+    },
   };
 };
 
@@ -39,9 +42,7 @@ const Gradient = (props) => (
 );
 
 const stopperY = 90;
-const angle = 360 / PEG_COUNT;
-const startAngle = (360 - 1 * angle) / 2;
-const endAngle = startAngle + angle;
+
 export const Wheel = (props) => (
   <fragment>
     <Gradient id={"gradient"} />
@@ -54,23 +55,33 @@ export const Wheel = (props) => (
       />
       {Array.from({ length: props.pegCount }).map((_, i) => {
         return (
-          <WheelSlice
-            stroke="blue"
-            selector={wheelSelector}
-            attributeTransform={wheelTransform}
+          <g x={700 / 2} y={WHEEL_RADIUS + stopperY + 10}>
+            <WheelSlice
+              index={i}
+              totalSlices={PEG_COUNT}
+              radius={WHEEL_RADIUS}
+              // todo: ensure state set from selector on initial render
+              x={700 / 2}
+              y={WHEEL_RADIUS + stopperY + 10}
+            />
+          </g>
+        );
+      })}
+
+      {Array.from({ length: props.pegCount }).map((_, i) => {
+        return <Peg key={i} />;
+      })}
+
+      {Array.from({ length: props.pegCount }).map((_, i) => {
+        return (
+          <WheelText
+            centerX={700 / 2}
+            centerY={WHEEL_RADIUS + stopperY + 10}
+            total={props.pegCount}
             index={i}
-            totalSlices={PEG_COUNT}
-            innerRadius={20}
-            radius={WHEEL_RADIUS}
-            // todo: ensure state set from selector on initial render
-            x={700 / 2}
-            y={WHEEL_RADIUS + stopperY + 10}
-          />
+          >{`$${i + 1}000`}</WheelText>
         );
       })}
     </g>
-    {Array.from({ length: props.pegCount }).map((_, i) => (
-      <Peg key={i} />
-    ))}
   </fragment>
 );

@@ -6,12 +6,13 @@ export const createWheelEntities = ({wheelCenterX, wheelCenterY, wheelRadius, co
     const wheel = Bodies.circle(wheelCenterX, wheelCenterY, wheelRadius, {
       collisionFilter,
       id: WHEEL_OF_FORTUNE,
+      restitution: 1,
     });
   
     const spinnerConstraint = Constraint.create({
-      bodyA: wheel,
-      pointA: { x: 0, y: 0 },
-      pointB: { x: wheelCenterX, y: wheelCenterY },
+      bodyB: wheel,
+      pointA: { x: wheelCenterX, y: wheelCenterY }, 
+      pointB: { x: 0, y: 0 },
       length: 0,
       stiffness: 1,
     });

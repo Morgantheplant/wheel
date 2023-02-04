@@ -1,4 +1,4 @@
-import _render from "../../render";
+import _render from "../../render"; 
 
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
   var angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
@@ -40,16 +40,36 @@ const arcPath = ({ x, y, radius, innerRadius, startAngle, endAngle }) => {
   ].join(" ");
 };
 
+const getGradientId = (index) => `slice-gradient-${index}`;
+
+export const SliceGradient = ({index, total}) => {
+  const value = Math.floor(index * 360/total);
+  const color1 = `hsl(${value}, 100%, 50%)`;
+  const color2 = `hsl(${value + 10}, 90%, 45%)`;
+  return (
+    <defs>
+      <linearGradient id={getGradientId(index)}>
+        <stop offset="5%" stop-color={color1} />
+        <stop offset="95%" stop-color={color2} />
+      </linearGradient>
+    </defs>
+  );
+};
+
 export const WheelSlice = ({ fill, stroke, index, totalSlices, ...props }) => {
   const angle = 360 / totalSlices;
   const offset = angle / 2;
   const startAngle = angle * index + offset;
   const endAngle = startAngle + angle;
   return (
-    <path
-      fill={fill}
-      stroke={stroke}
-      d={arcPath({ startAngle, endAngle, ...props })}
-    />
+    <fragment>
+      <SliceGradient total={totalSlices} index={index} />
+      <path
+        fill={`url(#${getGradientId(index)})`}
+        stroke={stroke || "black"}
+        d={arcPath({ startAngle, endAngle, innerRadius: 20, ...props })}
+      />
+     
+    </fragment>
   );
 };

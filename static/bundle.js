@@ -70,7 +70,8 @@
     "defs",
     "linearGradient",
     "stop",
-    "g"
+    "g",
+    "text"
   ]);
 
   const createElement = (() => {
@@ -130,7 +131,12 @@
       if (children) {
         const handleChildren = (child) => {
           if (typeof child === "string") {
-            // avoid setting text nodes on svg elements
+            // handle svg text element
+            if(component === "text"){
+              $element.textContent = child;
+              return;
+            }
+            // avoid setting text nodes on other svg elements
             if (svgElements.has(component)) return;
             const textnode = document.createTextNode(child);
             $element.appendChild(textnode);
@@ -10985,21 +10991,29 @@
       const stopper = matterExports.Bodies.rectangle(
           stopperX,
           stopperY,
-          stopperHeight,
+          stopperHeight, // todo: these are incorrectly labeled (switch them)
           stopperWidth,
           {
             collisionFilter: stopperCollisionFilter,
             id: STOPPER,
           }
         );
-        const stopperBaseLeft = matterExports.Bodies.rectangle(stopperX - 30, 75, 40, 40, {
+        stopper.initialHeight = stopperHeight;
+        stopper.initialWidth = stopperWidth;
+        const stopperBase = 40;
+        const stopperBaseLeft = matterExports.Bodies.rectangle(stopperX - 30, 75, stopperBase, stopperBase, {
           isStatic: true,
           id: STOPPER_LEFT,
         });
-        const stopperBaseRight = matterExports.Bodies.rectangle(stopperX + 30, 75, 40, 40, {
+        stopperBaseLeft.initialHeight = stopperBase;
+        stopperBaseLeft.initialWidth = stopperBase;
+        const stopperBaseRight = matterExports.Bodies.rectangle(stopperX + 30, 75, stopperBase, stopperBase, {
           isStatic: true,
           id: STOPPER_RIGHT,
         });
+        stopperBaseRight.initialHeight = stopperBase;
+        stopperBaseRight.initialWidth = stopperBase;
+
 
         const nail = matterExports.Constraint.create({
           pointA: { x: stopperX, y: stopperY },
@@ -11017,12 +11031,13 @@
       const wheel = matterExports.Bodies.circle(wheelCenterX, wheelCenterY, wheelRadius, {
         collisionFilter,
         id: WHEEL_OF_FORTUNE,
+        restitution: 1,
       });
 
       const spinnerConstraint = matterExports.Constraint.create({
-        bodyA: wheel,
-        pointA: { x: 0, y: 0 },
-        pointB: { x: wheelCenterX, y: wheelCenterY },
+        bodyB: wheel,
+        pointA: { x: wheelCenterX, y: wheelCenterY },
+        pointB: { x: 0, y: 0 },
         length: 0,
         stiffness: 1,
       });
@@ -11030,25 +11045,30 @@
       return [wheel, spinnerConstraint]
     };
 
-  const getXYCoords = (angle, radius, offset) => ({
+  const getXYCoords$1 = (angle, radius, offset) => ({
       x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
       y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
     });
 
   const createPegEntities = ({ pegCount, wheelRadius, offset, collisionFilterMask, wheel }) =>{
       const angle = 360 / pegCount;
-      const pegEntities = Array.from({ length: pegCount }).reduce((acc, _, i) => {
 
-          const peg = matterExports.Bodies.circle(0, 0, 10, {
+      const pegEntities = Array.from({ length: pegCount }).reduce((acc, _, i) => {
+        const coords = getXYCoords$1(360 - i * angle, wheelRadius, offset || 10);
+          const peg = matterExports.Bodies.circle(coords.x, coords.y, 10, {
             collisionFilter: {
               mask: collisionFilterMask,
             },
             id: selectPeg(i),
+
           });
+
+          peg.initialXPosition = coords.x;
+          peg.initialYPosition = coords.y;
 
           const pegConstraint = matterExports.Constraint.create({
             bodyA: wheel,
-            pointA: getXYCoords(360 - i * angle, wheelRadius, offset || 10),
+            pointA: coords,
             pointB: { x: 0, y: 0 },
             length: 0,
             bodyB: peg,
@@ -11116,8 +11136,8 @@
     const stopperEntities = createStopperEntities({
       stopperX: wheelCenterX,
       stopperY: 90,
-      stopperHeight: 6,
-      stopperWidth: 40,
+      stopperHeight: 8,
+      stopperWidth: 44,
       stopperCollisionFilter: {
           group: wheelGroup,
           mask: pegStopperCategory,
@@ -11183,19 +11203,19 @@
   const pegSelector = key => findBodyById(selectPeg(key));
   const pegTransform = (body = {}) => ({
     r: body.circleRadius,
-    cx: body.position.x,
-    cy: body.position.y,
-    fill: "black",
-    stroke: "red",
+    cx: body.initialXPosition + 350, //body.position.x,
+    cy: body.initialYPosition + WHEEL_RADIUS + 100,//body.position.y,
+    fill: "brown",
+    stroke: "black",
     style: {
       "transform-origin": "center center",
       "transform-box": "fill-box",
+      "stroke-width": 2
     }
   });
 
   const Peg = (props) => (
     _render.createElement('circle', {
-      id: "foo",
       selector: pegSelector(props.key),
       attributeTransform: pegTransform}
       )
@@ -11241,18 +11261,72 @@
     ].join(" ");
   };
 
+  const getGradientId = (index) => `slice-gradient-${index}`;
+
+  const SliceGradient = ({index, total}) => {
+    const value = Math.floor(index * 360/total);
+    const color1 = `hsl(${value}, 100%, 50%)`;
+    const color2 = `hsl(${value + 10}, 90%, 45%)`;
+    return (
+      _render.createElement('defs', null, [
+        _render.createElement('linearGradient', {id: getGradientId(index)}, [
+          _render.createElement('stop', {offset: "5%", 'stop-color': color1}),
+          _render.createElement('stop', {offset: "95%", 'stop-color': color2})
+        ])
+      ])
+    );
+  };
+
   const WheelSlice = ({ fill, stroke, index, totalSlices, ...props }) => {
     const angle = 360 / totalSlices;
     const offset = angle / 2;
     const startAngle = angle * index + offset;
     const endAngle = startAngle + angle;
     return (
-      _render.createElement('path', {
-        fill: fill,
-        stroke: stroke,
-        d: arcPath({ startAngle, endAngle, ...props })}
-      )
+      _render.createElement('fragment', null, [
+        SliceGradient({total: totalSlices, index: index}),
+        _render.createElement('path', {
+          fill: `url(#${getGradientId(index)})`,
+          stroke: stroke || "black",
+          d: arcPath({ startAngle, endAngle, innerRadius: 20, ...props })}
+        )
+
+      ])
     );
+  };
+
+  const getXYCoords = (angle, radius, offset) => ({
+      x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
+      y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
+    });
+
+
+  const WheelText = (props, children) => {
+      const angle = props.index * (360 / props.total);
+      const {x, y} = getXYCoords(angle, WHEEL_RADIUS, 50);
+
+      return _render.createElement('fragment', null, [
+          /* <rect height={2} fill="green" width={WHEEL_RADIUS/2} x={props.centerX-x} y={props.centerY - y}
+          style={{
+              "transform": `rotate(${270 - angle}deg)`,
+              // "transform-origin": "center center",
+              "transform-box": "fill-box",
+            }}
+          ></rect> */
+          _render.createElement('text', {
+          x: props.centerX - x, // todo: grab center of board
+          y: props.centerY - y,
+          'text-anchor': "middle",
+          style: {
+
+              "transform": `rotate(${270 - angle}deg)`,
+               "transform-origin": "center center",
+              "transform-box": "fill-box",
+            }
+          }, [
+          children
+          ])
+          ])
   };
 
   const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
@@ -11261,11 +11335,13 @@
       r: body.circleRadius,
       cx: body.position.x,
       cy: body.position.y,
-      // style: {
-      //   transform: `rotate(${body.angle}rad)`,
-      //   "transform-origin": "center center",
-      //   "transform-box": "fill-box"
-      // },
+      cx: 700 / 2,
+      cy: WHEEL_RADIUS + stopperY + 10,
+      style: {
+        transform: `rotate(${body.angle}rad)`,
+        "transform-origin": "center center",
+        "transform-box": "fill-box",
+      },
     };
   };
 
@@ -11289,6 +11365,7 @@
   );
 
   const stopperY = 90;
+
   const Wheel = (props) => (
     _render.createElement('fragment', null, [
       Gradient({id: "gradient"}),
@@ -11301,24 +11378,34 @@
         ),
         Array.from({ length: props.pegCount }).map((_, i) => {
           return (
-            WheelSlice({
-              stroke: "blue",
-              selector: wheelSelector,
-              attributeTransform: wheelTransform,
-              index: i,
-              totalSlices: PEG_COUNT,
-              innerRadius: 20,
-              radius: WHEEL_RADIUS,
-              // todo: ensure state set from selector on initial render
-              x: 700 / 2,
-              y: WHEEL_RADIUS + stopperY + 10}
-            )
+            _render.createElement('g', {x: 700 / 2, y: WHEEL_RADIUS + stopperY + 10}, [
+              WheelSlice({
+                index: i,
+                totalSlices: PEG_COUNT,
+                radius: WHEEL_RADIUS,
+                // todo: ensure state set from selector on initial render
+                x: 700 / 2,
+                y: WHEEL_RADIUS + stopperY + 10}
+              )
+            ])
+          );
+        }),
+
+        Array.from({ length: props.pegCount }).map((_, i) => {
+          return Peg({key: i});
+        }),
+
+        Array.from({ length: props.pegCount }).map((_, i) => {
+          return (
+            WheelText({
+              centerX: 700 / 2,
+              centerY: WHEEL_RADIUS + stopperY + 10,
+              total: props.pegCount,
+              index: i
+            }, [`$${i + 1}000`])
           );
         })
-      ]),
-      Array.from({ length: props.pegCount }).map((_, i) => (
-        Peg({key: i})
-      ))
+      ])
     ])
   );
 
@@ -11326,11 +11413,14 @@
   const stopperLeftSelector = findBodyById(STOPPER_LEFT);
   const stopperRightSelector = findBodyById(STOPPER_RIGHT);
 
-  const rectTransform = (height, width) => (body = {}) => {
+  const rectTransform = (body = {}) => {
     return {
-      x: body.position.x - (width/2),
-      y: body.position.y - (height/2),
+      height: body.initialHeight,
+      width: body.initialWidth,
+      x: body.position.x - (body.initialWidth/2),
+      y: body.position.y - (body.initialWidth/2),
       style: {
+        "fill": "brown",
         transform: `rotate(${body.angle}rad)`,
         "transform-origin": "top left",
         "transform-box": "fill-box",
@@ -11338,13 +11428,27 @@
     }
   };
 
-  const stopperTransform = (height, width) => (body) => ({
-      x: body.position.x - (height/2),
-      y: body.position.y - (width/2),
+  const toPoints = (values) => values.map(item=>item.join(" ")).join(",");
+  const createStopperTrianglePoints = (body) => {
+    const width = body.initialHeight; // todo: fix this it is switched
+    const height = body.initialWidth;
+    const x = body.position.x - (width/2);
+    const y = body.position.y - (height/2);
+    // end of stopper padding so collision doesnt appear to overlap
+    const paddingBottom = 5;
+    const topLeft = [x, y];
+    const bottom = [x + width / 2, y + height - paddingBottom];
+    const topRight = [x + width, y];
+    return toPoints([topLeft, bottom, topRight])
+  };
+  const stopperTransform = (body) => ({
+      points: createStopperTrianglePoints(body),
       style: {
          transform: `rotate(${body.angle}rad)`,
         "transform-origin": "4px 20px",
         "transform-box": "fill-box",
+        "stroke-linejoin": "round",
+        "stroke-width": "3px"
       }
     });
 
@@ -11352,22 +11456,17 @@
     return (
       _render.createElement('fragment', null, [
         _render.createElement('rect', {
-         width: 40,
-         height: 40,
-          stroke: "black",
-          selector: stopperLeftSelector, attributeTransform: rectTransform(40, 40)}),
+          stroke: "brown",
+          selector: stopperLeftSelector, attributeTransform: rectTransform}),
         _render.createElement('rect', {
-          width: 40,
-          height: 40,
-          stroke: "black",
+          stroke: "brown",
           selector: stopperRightSelector,
-          attributeTransform: rectTransform(40, 40)}
+          attributeTransform: rectTransform}
         ),
-        _render.createElement('rect', {
-         width: 6,
-         height: 40,
-         stroke: "yellow",
-         selector: stopperSelector, attributeTransform: stopperTransform(6, 40)})
+        _render.createElement('polygon', {
+         fill: "orange",
+         stroke: "orange",
+         selector: stopperSelector, attributeTransform: stopperTransform})
       ])
     )
   };

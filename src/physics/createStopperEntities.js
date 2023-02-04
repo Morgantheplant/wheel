@@ -6,22 +6,30 @@ export const createStopperEntities = ({ stopperX, stopperY, stopperHeight, stopp
     const stopper = Bodies.rectangle(
         stopperX,
         stopperY,
-        stopperHeight,
+        stopperHeight, // todo: these are incorrectly labeled (switch them)
         stopperWidth,
         {
           collisionFilter: stopperCollisionFilter,
           id: STOPPER,
         }
       );
-      const stopperBaseLeft = Bodies.rectangle(stopperX - 30, 75, 40, 40, {
+      stopper.initialHeight = stopperHeight
+      stopper.initialWidth = stopperWidth
+      const stopperBase = 40;
+      const stopperBaseLeft = Bodies.rectangle(stopperX - 30, 75, stopperBase, stopperBase, {
         isStatic: true,
         id: STOPPER_LEFT,
       });
-      const stopperBaseRight = Bodies.rectangle(stopperX + 30, 75, 40, 40, {
+      stopperBaseLeft.initialHeight = stopperBase;
+      stopperBaseLeft.initialWidth = stopperBase;
+      const stopperBaseRight = Bodies.rectangle(stopperX + 30, 75, stopperBase, stopperBase, {
         isStatic: true,
         id: STOPPER_RIGHT,
       });
-    
+      stopperBaseRight.initialHeight = stopperBase;
+      stopperBaseRight.initialWidth = stopperBase;
+
+     
       const nail = Constraint.create({
         pointA: { x: stopperX, y: stopperY },
         pointB: { x: 0, y: -10 },

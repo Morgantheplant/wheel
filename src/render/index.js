@@ -13,7 +13,8 @@ const svgElements = new Set([
   "defs",
   "linearGradient",
   "stop",
-  "g"
+  "g",
+  "text"
 ]);
 
 export const createElement = (() => {
@@ -73,7 +74,12 @@ export const createElement = (() => {
     if (children) {
       const handleChildren = (child) => {
         if (typeof child === "string") {
-          // avoid setting text nodes on svg elements
+          // handle svg text element
+          if(component === "text"){
+            $element.textContent = child
+            return;
+          }
+          // avoid setting text nodes on other svg elements
           if (svgElements.has(component)) return;
           const textnode = document.createTextNode(child);
           $element.appendChild(textnode);
