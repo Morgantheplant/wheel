@@ -1,4 +1,4 @@
-import { Engine, Render, Runner, Composite, Body } from "matter-js";
+import { Engine, Render, Runner, Composite, Body, Events } from "matter-js";
 import { updatePosition } from "../store/slice";
 import { HEIGHT, PEG_COUNT, STOPPER_HEIGHT, STOPPER_WIDTH, WHEEL_RADIUS, WIDTH } from "../settings";
 import { createStopperEntities } from "./createStopperEntities";
@@ -78,8 +78,15 @@ export const initPhysics = (store) => {
     Composite.add(engine.world, entityGroup);
   })
 
-  
-  
+    // dispatch DOM updates
+    const updateDOM = () => {
+        const bodies = Composite.allBodies(engine.world);
+        store.dispatch(updatePosition(bodies));
+    }
+
+    // update initial state
+    updateDOM()
+
     // run the renderer
     Render.run(render);
 
@@ -88,12 +95,17 @@ export const initPhysics = (store) => {
 
     // run the engine
     Runner.run(runner, engine);
-  
-  const loop = () => {
-    const bodies = Composite.allBodies(engine.world);
-    store.dispatch(updatePosition(bodies));
-    requestAnimationFrame(loop)
-  }
+
+    // update DOM on each tick
+    Events.on(runner, 'afterTick', updateDOM)
+
     
-  loop()
+  
+//   const loop = () => {
+//     const bodies = Composite.allBodies(engine.world);
+//     store.dispatch(updatePosition(bodies));
+//     requestAnimationFrame(loop)
+//   }
+    
+//   loop()
 };

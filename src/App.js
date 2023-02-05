@@ -3,6 +3,7 @@ import { store } from "./store/slice";
 import { SvgBackground } from "./components/SvgBackground";
 import { Wheel } from "./components/wheel/Wheel";
 import { Stopper } from "./components/stopper/Stopper";
+import { PEG_COUNT, WHEEL_SLICE_COUNT } from "./settings";
 
 
 export const App = () => {
@@ -14,7 +15,7 @@ export const App = () => {
         </h1>
         <div style={{position: "absolute", "pointer-events": "none"}}>
         <SvgBackground height={height} width={width}>
-          <Wheel center={width/2} pegCount={15}/>  
+          <Wheel sliceCount={WHEEL_SLICE_COUNT} pegCount={PEG_COUNT}/>  
           <Stopper />
         </SvgBackground>
         </div>

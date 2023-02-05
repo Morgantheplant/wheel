@@ -71,7 +71,9 @@
     "linearGradient",
     "stop",
     "g",
-    "text"
+    "text",
+    "filter",
+    "feGaussianBlur"
   ]);
 
   const createElement = (() => {
@@ -10977,7 +10979,8 @@
   const WIDTH = 700; //Math.max(innerWidth, 150);
   const HEIGHT = 700; //Math.max(innerHeight - 100, screenWidth)
   const WHEEL_RADIUS = WIDTH / 3;
-  const PEG_COUNT = 15;
+  const PEG_COUNT = 40;
+  const WHEEL_SLICE_COUNT = 20;
 
   const PEG = "PEG";
   const STOPPER = "STOPPER";
@@ -11026,24 +11029,32 @@
       return [stopper, stopperBaseLeft, stopperBaseRight, nail]
   };
 
-  const createWheelEntities = ({wheelCenterX, wheelCenterY, wheelRadius, collisionFilter }) => {
+  const createWheelEntities = ({
+    wheelCenterX,
+    wheelCenterY,
+    wheelRadius,
+    collisionFilter,
+  }) => {
+    const wheel = matterExports.Bodies.circle(wheelCenterX, wheelCenterY, wheelRadius, {
+      collisionFilter,
+      id: WHEEL_OF_FORTUNE,
+      restitution: 1,
+    });
 
-      const wheel = matterExports.Bodies.circle(wheelCenterX, wheelCenterY, wheelRadius, {
-        collisionFilter,
-        id: WHEEL_OF_FORTUNE,
-        restitution: 1,
-      });
+    wheel.initialRadius = wheelRadius;
+    wheel.initialX = wheelCenterX;
+    wheel.initialY = wheelCenterY;
 
-      const spinnerConstraint = matterExports.Constraint.create({
-        bodyB: wheel,
-        pointA: { x: wheelCenterX, y: wheelCenterY },
-        pointB: { x: 0, y: 0 },
-        length: 0,
-        stiffness: 1,
-      });
+    const spinnerConstraint = matterExports.Constraint.create({
+      bodyB: wheel,
+      pointA: { x: wheelCenterX, y: wheelCenterY },
+      pointB: { x: 0, y: 0 },
+      length: 0,
+      stiffness: 1,
+    });
 
-      return [wheel, spinnerConstraint]
-    };
+    return [wheel, spinnerConstraint];
+  };
 
   const getXYCoords$1 = (angle, radius, offset) => ({
       x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
@@ -11055,7 +11066,7 @@
 
       const pegEntities = Array.from({ length: pegCount }).reduce((acc, _, i) => {
         const coords = getXYCoords$1(360 - i * angle, wheelRadius, offset || 10);
-          const peg = matterExports.Bodies.circle(coords.x, coords.y, 10, {
+          const peg = matterExports.Bodies.circle(coords.x, coords.y, 5, {
             collisionFilter: {
               mask: collisionFilterMask,
             },
@@ -11169,7 +11180,14 @@
       matterExports.Composite.add(engine.world, entityGroup);
     });
 
+      // dispatch DOM updates
+      const updateDOM = () => {
+          const bodies = matterExports.Composite.allBodies(engine.world);
+          store.dispatch(updatePosition(bodies));
+      };
 
+      // update initial state
+      updateDOM();
 
       // run the renderer
       matterExports.Render.run(render);
@@ -11180,20 +11198,26 @@
       // run the engine
       matterExports.Runner.run(runner, engine);
 
-    const loop = () => {
-      const bodies = matterExports.Composite.allBodies(engine.world);
-      store.dispatch(updatePosition(bodies));
-      requestAnimationFrame(loop);
-    };
+      // update DOM on each tick
+      matterExports.Events.on(runner, 'afterTick', updateDOM);
 
-    loop();
+
+
+  //   const loop = () => {
+  //     const bodies = Composite.allBodies(engine.world);
+  //     store.dispatch(updatePosition(bodies));
+  //     requestAnimationFrame(loop)
+  //   }
+
+  //   loop()
   };
 
   const SvgBackground = (props, children)=> {
       return _render.createElement('svg', {
       version: "1.1",
       width: props.width,
-      height: props.height
+      height: props.height,
+      style: {background: 'grey'}
       }, [children])
   };
 
@@ -11205,12 +11229,13 @@
     r: body.circleRadius,
     cx: body.initialXPosition + 350, //body.position.x,
     cy: body.initialYPosition + WHEEL_RADIUS + 100,//body.position.y,
-    fill: "brown",
+    fill: "grey",
     stroke: "black",
+    filter: "drop-shadow(2px 2px 2px rgb(0 0 0 / 0.5))",
     style: {
       "transform-origin": "center center",
       "transform-box": "fill-box",
-      "stroke-width": 2
+      "stroke-width": 1,
     }
   });
 
@@ -11220,6 +11245,8 @@
       attributeTransform: pegTransform}
       )
   );
+
+  const wheelSelector$2 = findBodyById(WHEEL_OF_FORTUNE);
 
   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
     var angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
@@ -11277,6 +11304,22 @@
     );
   };
 
+  const sliceTransform =(startAngle, endAngle) =>  (wheel) => {
+    const x = wheel.initialX;
+    const y =wheel.initialY;
+    return {
+      d: arcPath({
+        x,
+        y,
+        startAngle,
+        endAngle,
+        innerRadius: 20,
+        radius: wheel.initialRadius,
+        innerRadius: 10
+      })
+    }
+  };
+
   const WheelSlice = ({ fill, stroke, index, totalSlices, ...props }) => {
     const angle = 360 / totalSlices;
     const offset = angle / 2;
@@ -11288,7 +11331,8 @@
         _render.createElement('path', {
           fill: `url(#${getGradientId(index)})`,
           stroke: stroke || "black",
-          d: arcPath({ startAngle, endAngle, innerRadius: 20, ...props })}
+          selector: wheelSelector$2,
+          attributeTransform: sliceTransform(startAngle, endAngle)}
         )
 
       ])
@@ -11296,49 +11340,108 @@
   };
 
   const getXYCoords = (angle, radius, offset) => ({
-      x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
-      y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
-    });
+    x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
+    y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
+  });
 
-
-  const WheelText = (props, children) => {
-      const angle = props.index * (360 / props.total);
-      const {x, y} = getXYCoords(angle, WHEEL_RADIUS, 50);
-
-      return _render.createElement('fragment', null, [
-          /* <rect height={2} fill="green" width={WHEEL_RADIUS/2} x={props.centerX-x} y={props.centerY - y}
-          style={{
-              "transform": `rotate(${270 - angle}deg)`,
-              // "transform-origin": "center center",
-              "transform-box": "fill-box",
-            }}
-          ></rect> */
-          _render.createElement('text', {
-          x: props.centerX - x, // todo: grab center of board
-          y: props.centerY - y,
-          'text-anchor': "middle",
-          style: {
-
-              "transform": `rotate(${270 - angle}deg)`,
-               "transform-origin": "center center",
-              "transform-box": "fill-box",
-            }
-          }, [
-          children
-          ])
-          ])
+  const textTransform = (angle) => (wheel) => {
+    const distaceFromEdge = 70;
+    const { x, y } = getXYCoords(angle, wheel.initialRadius, distaceFromEdge);
+    return {
+      x: wheel.initialX - x, // todo: grab center of board
+      y: wheel.initialY - y,
+    };
   };
 
+  const WheelText = (props, children) => {
+    const angle = props.index * (360 / props.totalSlices);
+    return (
+      _render.createElement('fragment', null, [
+        _render.createElement('text', {
+          selector: wheelSelector$2,
+          attributeTransform: textTransform(angle),
+          'text-anchor': "middle",
+          style: {
+            "font-weight": "bold",
+            transform: `rotate(${270 - angle}deg)`,
+            "transform-origin": "center center",
+            "transform-box": "fill-box",
+          }
+        }, [
+          children
+        ])
+      ])
+    );
+  };
+
+  const shadowTransform = (wheel) => ({
+    className: "shadow",
+    r: wheel.initialRadius,
+    cx: wheel.initialX + 5,
+    cy: wheel.initialY + 8,
+    fill: "rgba(0,0,0, 0.4)",
+    filter:"url(#blurFilter)"
+  });
+
+  const wheelSelector$1 = findBodyById(WHEEL_OF_FORTUNE);
+
+  const WheelShadow = (props) => (
+    _render.createElement('g', {className: props.className}, [
+      _render.createElement('filter', {id: "blurFilter"}, [
+        _render.createElement('feGaussianBlur', {in: "SourceGraphic", stdDeviation: "3"})
+      ]),
+      _render.createElement('circle', {
+        selector: wheelSelector$1,
+        attributeTransform: shadowTransform}
+      )
+    ])
+  );
+
+  const PegItems = (props) => _render.createElement('fragment', null, [
+       Array.from({ length: props.pegCount }).map((_, i) => {
+          return Peg({key: i});
+        })
+  ]);
+
+  const WheelSliceItems = (props) => (
+    _render.createElement('fragment', null, [
+      Array.from({ length: props.sliceCount }).map((_, i) => {
+        return (
+          WheelSlice({
+            index: i,
+            totalSlices: props.sliceCount}
+          //   radius={WHEEL_RADIUS}
+          //   // todo: ensure state set from selector on initial render
+          //   x={700 / 2}
+          //   y={WHEEL_RADIUS + stopperY + 10}
+          )
+        );
+      })
+    ])
+  );
+
+  const WheelTextItems = (props) => (
+    _render.createElement('fragment', null, [
+      Array.from({ length: props.sliceCount }).map((_, i) => {
+        // text must go on top
+        return (
+          WheelText({
+            totalSlices: props.sliceCount,
+            index: i
+          }, [`$${i + 1}000`
+          ])
+        );
+      })
+    ])
+  );
+
   const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
-  const wheelTransform = (body = {}) => {
+  const wheelTransform = (wheel = {}) => {
     return {
-      r: body.circleRadius,
-      cx: body.position.x,
-      cy: body.position.y,
-      cx: 700 / 2,
-      cy: WHEEL_RADIUS + stopperY + 10,
+      r: wheel.circleRadius,
+      cx: wheel.initialX,
+      cy: wheel.initialY,
       style: {
-        transform: `rotate(${body.angle}rad)`,
         "transform-origin": "center center",
         "transform-box": "fill-box",
       },
@@ -11352,60 +11455,26 @@
       transform: `rotate(${body.angle}rad)`,
       "transform-origin": "center center",
       "transform-box": "fill-box",
+
     },
   });
 
-  const Gradient = (props) => (
-    _render.createElement('defs', null, [
-      _render.createElement('linearGradient', {id: props.id, gradientTransform: "rotate(90)"}, [
-        _render.createElement('stop', {offset: "5%", 'stop-color': "gold"}),
-        _render.createElement('stop', {offset: "95%", 'stop-color': "red"})
-      ])
-    ])
-  );
-
-  const stopperY = 90;
-
   const Wheel = (props) => (
     _render.createElement('fragment', null, [
-      Gradient({id: "gradient"}),
-      _render.createElement('g', {selector: wheelSelector, attributeTransform: wheelGroupTransform}, [
+      WheelShadow({className: "wheel__shadow"}),
+      _render.createElement('g', {className: "wheel__rotation-group", selector: wheelSelector, attributeTransform: wheelGroupTransform}, [
         _render.createElement('circle', {
-          fill: "url('#gradient')",
-          stroke: "red",
+          className: "wheel__background",
+          fill: "grey",
+          stroke: "black",
           selector: wheelSelector,
           attributeTransform: wheelTransform}
         ),
-        Array.from({ length: props.pegCount }).map((_, i) => {
-          return (
-            _render.createElement('g', {x: 700 / 2, y: WHEEL_RADIUS + stopperY + 10}, [
-              WheelSlice({
-                index: i,
-                totalSlices: PEG_COUNT,
-                radius: WHEEL_RADIUS,
-                // todo: ensure state set from selector on initial render
-                x: 700 / 2,
-                y: WHEEL_RADIUS + stopperY + 10}
-              )
-            ])
-          );
-        }),
+        WheelSliceItems({sliceCount: props.sliceCount}),
+        PegItems({pegCount: props.pegCount}),
 
-        Array.from({ length: props.pegCount }).map((_, i) => {
-          return Peg({key: i});
-        }),
-
-        Array.from({ length: props.pegCount }).map((_, i) => {
-          return (
-            WheelText({
-              centerX: 700 / 2,
-              centerY: WHEEL_RADIUS + stopperY + 10,
-              total: props.pegCount,
-              index: i
-            }, [`$${i + 1}000`])
-          );
-        })
-      ])
+       WheelTextItems({sliceCount: props.sliceCount})
+       ])
     ])
   );
 
@@ -11420,10 +11489,11 @@
       x: body.position.x - (body.initialWidth/2),
       y: body.position.y - (body.initialWidth/2),
       style: {
-        "fill": "brown",
+        "fill": "#3d1919",
         transform: `rotate(${body.angle}rad)`,
         "transform-origin": "top left",
         "transform-box": "fill-box",
+
       }
     }
   };
@@ -11448,18 +11518,18 @@
         "transform-origin": "4px 20px",
         "transform-box": "fill-box",
         "stroke-linejoin": "round",
-        "stroke-width": "3px"
-      }
+        "stroke-width": "3px",
+      },
+      filter: "drop-shadow(3px 5px 2px rgb(0 0 0 / 0.4))"
     });
 
   const Stopper = () => {
     return (
       _render.createElement('fragment', null, [
         _render.createElement('rect', {
-          stroke: "brown",
-          selector: stopperLeftSelector, attributeTransform: rectTransform}),
+          selector: stopperLeftSelector,
+          attributeTransform: rectTransform}),
         _render.createElement('rect', {
-          stroke: "brown",
           selector: stopperRightSelector,
           attributeTransform: rectTransform}
         ),
@@ -11480,7 +11550,7 @@
           ]),
           _render.createElement('div', {style: {position: "absolute", "pointer-events": "none"}}, [
           SvgBackground({height: height, width: width}, [
-            Wheel({center: width/2, pegCount: 15}),
+            Wheel({sliceCount: WHEEL_SLICE_COUNT, pegCount: PEG_COUNT}),
             Stopper()
           ])
           ])

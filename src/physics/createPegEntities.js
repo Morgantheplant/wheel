@@ -11,7 +11,7 @@ export const createPegEntities = ({ pegCount, wheelRadius, offset, collisionFilt
     
     const pegEntities = Array.from({ length: pegCount }).reduce((acc, _, i) => {
       const coords = getXYCoords(360 - i * angle, wheelRadius, offset || 10)
-        const peg = Bodies.circle(coords.x, coords.y, 10, {
+        const peg = Bodies.circle(coords.x, coords.y, 5, {
           collisionFilter: {
             mask: collisionFilterMask,
           },

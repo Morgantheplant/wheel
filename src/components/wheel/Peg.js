@@ -8,12 +8,13 @@ const pegTransform = (body = {}) => ({
   r: body.circleRadius,
   cx: body.initialXPosition + 350, //body.position.x,
   cy: body.initialYPosition + WHEEL_RADIUS + 100,//body.position.y,
-  fill: "brown",
+  fill: "grey",
   stroke: "black",
+  filter: "drop-shadow(2px 2px 2px rgb(0 0 0 / 0.5))",
   style: {
     "transform-origin": "center center",
     "transform-box": "fill-box",
-    "stroke-width": 2
+    "stroke-width": 1,
   }
 });
 

@@ -13,10 +13,11 @@ const rectTransform = (body = {}) => {
     x: body.position.x - (body.initialWidth/2),
     y: body.position.y - (body.initialWidth/2),
     style: {
-      "fill": "brown",
+      "fill": "#3d1919",
       transform: `rotate(${body.angle}rad)`,
       "transform-origin": "top left",
       "transform-box": "fill-box",
+      
     }
   }
 }
@@ -41,18 +42,18 @@ const stopperTransform = (body) => ({
       "transform-origin": "4px 20px",
       "transform-box": "fill-box",
       "stroke-linejoin": "round",
-      "stroke-width": "3px"
-    }
+      "stroke-width": "3px",
+    },
+    filter: "drop-shadow(3px 5px 2px rgb(0 0 0 / 0.4))"
   })
 
 export const Stopper = () => {
   return (
     <fragment>
       <rect
-        stroke="brown" 
-        selector={stopperLeftSelector} attributeTransform={rectTransform} />
+        selector={stopperLeftSelector} 
+        attributeTransform={rectTransform} />
       <rect
-        stroke="brown"
         selector={stopperRightSelector}
         attributeTransform={rectTransform}
       />

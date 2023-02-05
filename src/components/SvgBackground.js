@@ -5,5 +5,6 @@ export const SvgBackground = (props, children)=> {
     version="1.1"
     width={props.width}
     height={props.height}
+    style={{background: 'grey'}}
     >{children}</svg>
 }

@@ -14,7 +14,9 @@ const svgElements = new Set([
   "linearGradient",
   "stop",
   "g",
-  "text"
+  "text",
+  "filter",
+  "feGaussianBlur"
 ]);
 
 export const createElement = (() => {

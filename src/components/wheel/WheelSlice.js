@@ -1,4 +1,5 @@
 import _render from "../../render"; 
+import { wheelSelector } from "../../selectors/wheelSelector";
 
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
   var angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
@@ -56,6 +57,22 @@ export const SliceGradient = ({index, total}) => {
   );
 };
 
+const sliceTransform =(startAngle, endAngle) =>  (wheel) => {
+  const x = wheel.initialX
+  const y =wheel.initialY
+  return {
+    d: arcPath({ 
+      x,
+      y,
+      startAngle, 
+      endAngle, 
+      innerRadius: 20, 
+      radius: wheel.initialRadius,
+      innerRadius: 10
+    })
+  }
+}
+
 export const WheelSlice = ({ fill, stroke, index, totalSlices, ...props }) => {
   const angle = 360 / totalSlices;
   const offset = angle / 2;
@@ -67,7 +84,8 @@ export const WheelSlice = ({ fill, stroke, index, totalSlices, ...props }) => {
       <path
         fill={`url(#${getGradientId(index)})`}
         stroke={stroke || "black"}
-        d={arcPath({ startAngle, endAngle, innerRadius: 20, ...props })}
+        selector={wheelSelector}
+        attributeTransform={sliceTransform(startAngle, endAngle)}
       />
      
     </fragment>
