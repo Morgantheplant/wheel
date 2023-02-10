@@ -3,6 +3,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import terser from '@rollup/plugin-terser';
 import jsx from 'rollup-plugin-jsx'
+import alias from '@rollup/plugin-alias';
 
 const isProduction = process.env.NODE_ENV === 'production'
 
@@ -35,6 +36,11 @@ export default {
       extensions: [ '.js' ],
       ignoreGlobal: false,
       sourceMap: false
+    }),
+    alias({
+      entries: [
+        { find: '_render', replacement: 'packages/render/index.js' },
+      ]
     })
 ]
 };

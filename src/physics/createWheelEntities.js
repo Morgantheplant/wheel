@@ -14,8 +14,8 @@ export const createWheelEntities = ({
   });
 
   wheel.initialRadius = wheelRadius;
-  wheel.initialX = wheelCenterX;
-  wheel.initialY = wheelCenterY;
+  wheel.initialXPosition = wheelCenterX;
+  wheel.initialYPosition = wheelCenterY;
 
   const spinnerConstraint = Constraint.create({
     bodyB: wheel,

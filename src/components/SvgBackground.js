@@ -1,4 +1,4 @@
-import _render from '../render';
+import _render from '_render';
 
 export const SvgBackground = (props, children)=> {
     return <svg 

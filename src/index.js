@@ -1,9 +1,8 @@
-import _render from './render';
+import _render, { renderToDOM } from '_render';
 
 import { initPhysics } from "./physics/base";
-import { App } from "./App";
+import { App } from "./components/App";
 import { store } from "./store/slice";
-import { renderToDOM } from "./render/renderToDOM";
 
 const initApp = () => {
     initPhysics(store);

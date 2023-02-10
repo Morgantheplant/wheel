@@ -45,8 +45,8 @@ export const initPhysics = (store) => {
   const stopperEntities = createStopperEntities({
     stopperX: wheelCenterX,
     stopperY: 90,
-    stopperHeight: 8,
-    stopperWidth: 44,
+    stopperHeight: 44,
+    stopperWidth: 8,
     stopperCollisionFilter: {
         group: wheelGroup,
         mask: pegStopperCategory,
@@ -79,10 +79,16 @@ export const initPhysics = (store) => {
   })
 
     // dispatch DOM updates
+    let spinning = false
     const updateDOM = () => {
         const bodies = Composite.allBodies(engine.world);
         store.dispatch(updatePosition(bodies));
     }
+
+    window.addEventListener('keydown', ()=>{
+        const bodies = Composite.allBodies(engine.world);
+        console.log(bodies[0])
+    })
 
     // update initial state
     updateDOM()
@@ -100,12 +106,4 @@ export const initPhysics = (store) => {
     Events.on(runner, 'afterTick', updateDOM)
 
     
-  
-//   const loop = () => {
-//     const bodies = Composite.allBodies(engine.world);
-//     store.dispatch(updatePosition(bodies));
-//     requestAnimationFrame(loop)
-//   }
-    
-//   loop()
 };

@@ -1,66 +1,69 @@
-import _render from "../../render";
+import _render from "_render";
 import { WHEEL_OF_FORTUNE } from "../../contants/bodies";
 import { findBodyById } from "../../selectors/findBodyById";
-import { Peg } from "./Peg";
-import { WheelSlice } from "./WheelSlice";
-import { WHEEL_RADIUS } from "../../settings";
-import { WheelText } from "./WheelText";
 import { WheelShadow } from "./WheelShadow";
-import { PegItems } from "./PegItems";
-import { WheelSliceItems } from "./WheelSliceItems";
-import { WheelTextItems } from "./WheelTextItems";
+import { PegGroup } from "./PegGroup";
+import { WheelSliceGroup } from "./WheelSliceGroup";
+import { WheelTextGroup } from "./WheelTextGroup";
 
 const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
-const wheelTransform = (wheel = {}) => {
-  return {
-    r: wheel.circleRadius,
-    cx: wheel.initialX,
-    cy: wheel.initialY,
-    style: {
-      "transform-origin": "center center",
-      "transform-box": "fill-box",
-    },
-  };
-};
 
 const wheelGroupTransform = (body) => ({
   x: body.position.x,
   y: body.position.y,
   style: {
     transform: `rotate(${body.angle}rad)`,
-    "transform-origin": "center center",
-    "transform-box": "fill-box",
-    
   },
 });
 
-
-const Gradient = (props) => (
-  <defs>
-    <linearGradient id={props.id} gradientTransform="rotate(90)">
-      <stop offset="5%" stop-color="gold" />
-      <stop offset="95%" stop-color="red" />
-    </linearGradient>
-  </defs>
-);
-
-const stopperY = 90;
-
 export const Wheel = (props) => (
   <fragment>
-    <WheelShadow className="wheel__shadow"/>
-    <g className="wheel__rotation-group" selector={wheelSelector} attributeTransform={wheelGroupTransform}>
+    <WheelShadow
+      className="wheel__shadow"
+      center={props.center}
+      radius={props.radius}
+    />
+    <g
+      className="wheel__rotation-group"
+      connect={wheelGroupTransform}
+      selector={wheelSelector}
+      style={{
+        "transform-box": "fill-box",
+        "transform-origin": "center center",
+      }}
+    >
       <circle
         className="wheel__background"
         fill="grey"
         stroke="black"
-        selector={wheelSelector}
-        attributeTransform={wheelTransform}
+        cx={props.center.x}
+        cy={props.center.y}
+        r={props.radius}
+        style={{
+          "transform-box": "fill-box",
+          "transform-origin": "center center",
+        }}
+        
       />
-      <WheelSliceItems sliceCount={props.sliceCount} />
-      <PegItems pegCount={props.pegCount} />
-     
-     <WheelTextItems sliceCount={props.sliceCount}/> 
-     </g>
+      <WheelSliceGroup 
+        className="wheel__slices" 
+        sliceCount={props.sliceCount} 
+        wheelCenter={props.center}
+        wheelRadius={props.radius}
+        />
+      <PegGroup
+        className="wheel__pegs"
+        pegs={props.pegs}
+        wheelRadius={props.radius}
+        width={props.width}
+      />
+
+      <WheelTextGroup 
+        className="wheel__slices-text" 
+        sliceCount={props.sliceCount} 
+        wheelCenter={props.center}
+        wheelRadius={props.radius}
+        />
+    </g>
   </fragment>
 );

@@ -6,15 +6,15 @@ export const createStopperEntities = ({ stopperX, stopperY, stopperHeight, stopp
     const stopper = Bodies.rectangle(
         stopperX,
         stopperY,
-        stopperHeight, // todo: these are incorrectly labeled (switch them)
         stopperWidth,
+        stopperHeight,
         {
           collisionFilter: stopperCollisionFilter,
           id: STOPPER,
         }
       );
-      stopper.initialHeight = stopperHeight
       stopper.initialWidth = stopperWidth
+      stopper.initialHeight = stopperHeight
       const stopperBase = 40;
       const stopperBaseLeft = Bodies.rectangle(stopperX - 30, 75, stopperBase, stopperBase, {
         isStatic: true,

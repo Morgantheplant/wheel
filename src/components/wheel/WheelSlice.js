@@ -1,93 +1,65 @@
-import _render from "../../render"; 
-import { wheelSelector } from "../../selectors/wheelSelector";
+import _render from "_render";
+import { getGradientId, WheelSliceGradient } from "./WheelSliceGradient";
 
-const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-  var angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+const degreesToRadians = (angle) => ((angle - 90) * Math.PI) / 180;
+const getPathCoords = (center, radius, angleDegrees) => {
+  const angleRadians = degreesToRadians(angleDegrees);
   return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
+    x: center.x + radius * Math.cos(angleRadians),
+    y: center.y + radius * Math.sin(angleRadians),
   };
 };
-const arcPath = ({ x, y, radius, innerRadius, startAngle, endAngle }) => {
-  var start = polarToCartesian(x, y, radius, endAngle);
-  var end = polarToCartesian(x, y, radius, startAngle);
-  var start2 = polarToCartesian(x, y, innerRadius, endAngle);
-  var end2 = polarToCartesian(x, y, innerRadius, startAngle);
-  var largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+const slicePath = ({
+  startAngle,
+  endAngle,
+  innerCircleRadius,
+  wheelCenter,
+  wheelRadius,
+}) => {
+  const start = getPathCoords(wheelCenter, wheelRadius, endAngle);
+  const end = getPathCoords(wheelCenter, wheelRadius, startAngle);
+  const start2 = getPathCoords(wheelCenter, innerCircleRadius, endAngle);
+  const end2 = getPathCoords(wheelCenter, innerCircleRadius, startAngle);
+  const arcPortion = endAngle - startAngle <= 180 ? "0" : "1";
   return [
-    "M",
-    start.x,
-    start.y,
-    "A",
-    radius,
-    radius,
-    0,
-    largeArcFlag,
-    0,
-    end.x,
-    end.y,
-    "L",
-    end2.x,
-    end2.y,
-    "A",
-    innerRadius,
-    innerRadius,
-    0,
-    largeArcFlag,
-    1,
-    start2.x,
-    start2.y,
-    "Z",
-  ].join(" ");
+    ["M", start.x, start.y],
+    ["A", wheelRadius, wheelRadius, 0, arcPortion, 0, end.x, end.y],
+    ["L", end2.x, end2.y],
+    ["A", innerCircleRadius, innerCircleRadius, 0, arcPortion, 1, start2.x, start2.y],
+    ["Z"],
+  ]
+    .map((path) => path.join(" "))
+    .join(" ");
 };
 
-const getGradientId = (index) => `slice-gradient-${index}`;
+const INNER_CIRCLE_SIZE = 50;
 
-export const SliceGradient = ({index, total}) => {
-  const value = Math.floor(index * 360/total);
-  const color1 = `hsl(${value}, 100%, 50%)`;
-  const color2 = `hsl(${value + 10}, 90%, 45%)`;
-  return (
-    <defs>
-      <linearGradient id={getGradientId(index)}>
-        <stop offset="5%" stop-color={color1} />
-        <stop offset="95%" stop-color={color2} />
-      </linearGradient>
-    </defs>
-  );
-};
-
-const sliceTransform =(startAngle, endAngle) =>  (wheel) => {
-  const x = wheel.initialX
-  const y =wheel.initialY
-  return {
-    d: arcPath({ 
-      x,
-      y,
-      startAngle, 
-      endAngle, 
-      innerRadius: 20, 
-      radius: wheel.initialRadius,
-      innerRadius: 10
-    })
-  }
-}
-
-export const WheelSlice = ({ fill, stroke, index, totalSlices, ...props }) => {
-  const angle = 360 / totalSlices;
-  const offset = angle / 2;
-  const startAngle = angle * index + offset;
-  const endAngle = startAngle + angle;
+export const WheelSlice = ({
+  stroke,
+  index,
+  totalSlices,
+  wheelCenter,
+  wheelRadius,
+}) => {
+  const angleSize = 360 / totalSlices;
+  const startPosition = angleSize / 2; // start slices offset from Pegs
+  const startAngle = angleSize * index + startPosition;
   return (
     <fragment>
-      <SliceGradient total={totalSlices} index={index} />
+      <WheelSliceGradient total={totalSlices} index={index} />
       <path
+        className="wheel__slice"
         fill={`url(#${getGradientId(index)})`}
-        stroke={stroke || "black"}
-        selector={wheelSelector}
-        attributeTransform={sliceTransform(startAngle, endAngle)}
+        stroke={stroke}
+        d={slicePath({
+          startAngle,
+          endAngle: startAngle + angleSize,
+          innerCircleRadius: INNER_CIRCLE_SIZE,
+          wheelRadius,
+          wheelCenter,
+        })}
       />
-     
     </fragment>
   );
 };

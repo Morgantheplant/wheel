@@ -6,11 +6,11 @@
   const isObject = (value) => typeof value === 'object' && !Array.isArray(value) && value !== null;
 
   /** memo transforms so only changed values are returned  */
-  const memo = (transform) => {
+  const memoTransform = (transform) => {
       const cache = {};
 
       const memoize = (...args) => {
-          const transformValues = transform(...args);
+          const transformValues = transform(...args) || {};
           return Object.entries(transformValues).reduce((acc, [key, value]) => {
 
               // handles any sub dict values
@@ -41,112 +41,174 @@
       return memoize;
     };
 
+  //https://github.com/WICG/EventListenerOptions/blob/gh-pages/explainer.md#feature-detection
+  const supportsPassive = (() => {
+    const memo = {};
+    const SUPPORTS_PASSIVE = "supportsPassive";
+    return () => {
+      if (memo.hasOwnProperty(SUPPORTS_PASSIVE)) {
+        return memo[SUPPORTS_PASSIVE];
+      }
+      memo[SUPPORTS_PASSIVE] = false;
+      try {
+        let opts = Object.defineProperty({}, "passive", {
+          get: function () {
+            memo[SUPPORTS_PASSIVE] = true;
+          },
+        });
+        window.addEventListener("testPassive", null, opts);
+        window.removeEventListener("testPassive", null, opts);
+      } catch (e) {}
+      return memo[SUPPORTS_PASSIVE];
+    };
+  })();
+
   const setStyles = (el, styles) => {
     Object.entries(styles).forEach(([key, value]) => {
       el.style[key] = value;
     });
   };
 
-  const setAttributes = (el, {className, style, ...attributes}) => {
-    if(style){
-      setStyles(el, style);
+  // attributes with "on" prefix are events
+  const isEvent = (attribute) => attribute.startsWith("on");
+  // remove the fist two "on" characters and lowercase for DOM event name
+  const formatEventName = (event) => event.slice(2, event.length).toLowerCase();
+
+  const updateElement = (element, { style, className, ...attributes }) => {
+    if (style) {
+      setStyles(element, style);
     }
+
     Object.entries({ ...attributes, class: className }).forEach(
       ([attribute, value]) => {
-        value && el.setAttribute(attribute, value);
+        // ignore empty values
+        if (!value) return;
+
+        // set event handlers
+        if (isEvent(attribute)) {
+          element.addEventListener(formatEventName(attribute), value,  supportsPassive ? { passive: true } : false);
+          return;
+        }
+        // set text value
+        if (attribute === "textContent") {
+          element.textContent = value;
+          return;
+        }
+        element.setAttribute(attribute, value);
       }
     );
   };
 
-  const svgns = "http://www.w3.org/2000/svg";
+  // initilize handlers and "connect" component to store
+  // since app only renders once, connect gives and API for updates
+  const connectElement = (element, { selector, connect, ...props }) => {
+    if (!connect) return [];
+    // memoize transform calls so only changes applies
+    const memoizedUpdater = memoTransform(connect);
+
+    const handler = (state) => {
+      const selection = selector ? selector(state) : state;
+      if (connect) {
+        // similar args to mapStateToProps
+        // https://react-redux.js.org/api/connect#connect-parameters
+        const elementUpdates = memoizedUpdater(selection, props);
+        elementUpdates && updateElement(element, elementUpdates);
+      }
+    };
+    return [handler];
+  };
+
+  const subscribeHandlers = ({ store, handlers }) => {
+      if (store) {
+        handlers.forEach((handler) => {
+          store.subscribe(handler);
+        });
+        // initialize store (store should only be added 1x in tree)
+        store.dispatch({ type: "@@INIT" });
+        //   if(process.env.NODE_ENV === "DEBUG"){
+        //     window.dispatch = state.store.dispatch;
+        //   }
+        return { store, handlers: [] };
+      }
+
+      return { store, handlers };
+    };
+
+  const connectStore = ({ element, elementProps, handlers, store }) => {
+    const updatedHandlers = handlers.concat(
+      connectElement(element, elementProps)
+    );
+    return subscribeHandlers({ store, handlers: updatedHandlers });
+  };
+
+  const svgns = 'http://www.w3.org/2000/svg';
   const svgElements = new Set([
-    "rect",
-    "circle",
-    "svg",
-    "polyline",
-    "polygon",
-    "ellipse",
-    "path",
-    "defs",
-    "linearGradient",
-    "stop",
-    "g",
-    "text",
-    "filter",
-    "feGaussianBlur"
+    'rect',
+    'circle',
+    'svg',
+    'polyline',
+    'polygon',
+    'ellipse',
+    'path',
+    'defs',
+    'linearGradient',
+    'stop',
+    'g',
+    'text',
+    'filter',
+    'feGaussianBlur',
   ]);
 
   const createElement = (() => {
-    const state = {
-      handlers: [],
-    };
-    return (component, attributes, children) => {
-      if (typeof component === "function") return component(attributes, children);
-      if (component == "fragment") return children;
+    const state = { handlers: [] };
+    return (component, props, children) => {
+      // handle custom components
+      if (typeof component === 'function') return component(props, children)
+      // handle fragments
+      if (component == 'fragment') return children
+
+      // create dom or svg element
       const $element = svgElements.has(component)
         ? document.createElementNS(svgns, component)
-        : document.createElement(component || "div");
+        : document.createElement(component || 'div');
 
-      if (attributes) {
-        const {
-          store,
-          selector,
-          attributeTransform,
-          ...restAttributes
-        } = attributes;
-        // initial styles
+      // set DOM/SVG attributes, events and textContent
+      if (props) {
+        const { store, selector, connect, ...restProps } = props;
+        updateElement($element, restProps);
 
-        // set all other attributes
-        setAttributes($element, restAttributes);
-
-        //initilize handlers
-        if (selector || attributeTransform) {
-
-          // memoize transform calls so only changes applies
-          const transformMemo = memo(attributeTransform);
-
-          const handler = (state) => {
-            const selection = selector ? selector(state) : state;
-           if(attributeTransform){
-            const attributeUpdates = transformMemo(selection);
-            attributeUpdates && setAttributes($element, attributeUpdates);
-           }
-
-          };
-          state.handlers.push(handler);
-        }
-
-        state.store = state.store || store;
-
-        // subscribe handlers
-        while (state.store && state.handlers.length) {
-          store.subscribe(state.handlers.pop());
-        }
-
-        // initialize store (store should only be added 1x in tree)
-        if (store) {
-          state.store.dispatch({ type: "@@INIT" });
-          window.dispatch = state.store.dispatch;
-        }
+        //connects app/handlers to store
+        const connectedStore = connectStore({
+          element: $element,
+          elementProps: {
+            selector,
+            connect,
+            props: restProps,
+          },
+          store: state.store || store,
+          handlers: state.handlers,
+        });
+        state.store = connectedStore.store;
+        state.handlers = connectedStore.handlers;
       }
 
       if (children) {
         const handleChildren = (child) => {
-          if (typeof child === "string") {
+          if (typeof child === 'string') {
             // handle svg text element
-            if(component === "text"){
+            if (component === 'text') {
               $element.textContent = child;
-              return;
+              return
             }
             // avoid setting text nodes on other svg elements
-            if (svgElements.has(component)) return;
+            if (svgElements.has(component)) return
             const textnode = document.createTextNode(child);
             $element.appendChild(textnode);
-            return;
+            return
           }
           if (Array.isArray(child)) {
             child.forEach(handleChildren);
-            return;
+            return
           }
 
           $element.appendChild(child);
@@ -155,9 +217,13 @@
         state.children.forEach(handleChildren);
       }
 
-      return $element;
-    };
+      return $element
+    }
   })();
+
+  const renderToDOM = (selector, App) => {
+      document.querySelector(selector).appendChild(App);
+  };
 
   var _render = { createElement };
 
@@ -10916,6 +10982,12 @@
   	});
   } (matter));
 
+  const SPIN_STATUS = {
+      IDLE: "IDLE",
+      SPINNING: "SPINING",
+      DRAGGING: "DRAGGING"
+  };
+
   const createAction = (type) => (payload) => ({
       type,
       payload
@@ -10943,14 +11015,16 @@
 
   const UPDATE_POSITION = "UPDATE_POSITION";
   const UPDATE_VIEWPORT_SIZE = "UPDATE_VIEWPORT_SIZE";
-  const COLLISION_DETECTED = "COLISSION_DETECTED";
+  const UPDATE_SPIN_STATUS = "UPDATE_SPIN_STATUS";
 
   const updatePosition = createAction(UPDATE_POSITION);
+  const updateSpinStatus = createAction(UPDATE_SPIN_STATUS);
 
   const defaultState = {
     bodies: [],
     height: 700,
-    width: 700
+    width: 700,
+    spinStatus: SPIN_STATUS.IDLE
   };
 
   const wheelReducer = (state=defaultState, action={}) => {
@@ -10963,12 +11037,12 @@
             height: action.payload.height,
             width: action.payload.width
           }
-        case COLLISION_DETECTED:
+        case SPIN_STATUS:
           return {
             ...state,
-            current_collided: action.payload,
-            previous_collided: state.current_collided
+            spinStatus: action.payload
           }
+
          default:
           return state;
       }
@@ -10979,8 +11053,8 @@
   const WIDTH = 700; //Math.max(innerWidth, 150);
   const HEIGHT = 700; //Math.max(innerHeight - 100, screenWidth)
   const WHEEL_RADIUS = WIDTH / 3;
-  const PEG_COUNT = 40;
-  const WHEEL_SLICE_COUNT = 20;
+  const PEG_COUNT = 24;
+  const WHEEL_SLICE_COUNT = 12;
 
   const PEG = "PEG";
   const STOPPER = "STOPPER";
@@ -10994,15 +11068,15 @@
       const stopper = matterExports.Bodies.rectangle(
           stopperX,
           stopperY,
-          stopperHeight, // todo: these are incorrectly labeled (switch them)
           stopperWidth,
+          stopperHeight,
           {
             collisionFilter: stopperCollisionFilter,
             id: STOPPER,
           }
         );
-        stopper.initialHeight = stopperHeight;
         stopper.initialWidth = stopperWidth;
+        stopper.initialHeight = stopperHeight;
         const stopperBase = 40;
         const stopperBaseLeft = matterExports.Bodies.rectangle(stopperX - 30, 75, stopperBase, stopperBase, {
           isStatic: true,
@@ -11042,8 +11116,8 @@
     });
 
     wheel.initialRadius = wheelRadius;
-    wheel.initialX = wheelCenterX;
-    wheel.initialY = wheelCenterY;
+    wheel.initialXPosition = wheelCenterX;
+    wheel.initialYPosition = wheelCenterY;
 
     const spinnerConstraint = matterExports.Constraint.create({
       bodyB: wheel,
@@ -11147,8 +11221,8 @@
     const stopperEntities = createStopperEntities({
       stopperX: wheelCenterX,
       stopperY: 90,
-      stopperHeight: 8,
-      stopperWidth: 44,
+      stopperHeight: 44,
+      stopperWidth: 8,
       stopperCollisionFilter: {
           group: wheelGroup,
           mask: pegStopperCategory,
@@ -11179,12 +11253,15 @@
       // add all of the bodies to the world
       matterExports.Composite.add(engine.world, entityGroup);
     });
-
-      // dispatch DOM updates
       const updateDOM = () => {
           const bodies = matterExports.Composite.allBodies(engine.world);
           store.dispatch(updatePosition(bodies));
       };
+
+      window.addEventListener('keydown', ()=>{
+          const bodies = matterExports.Composite.allBodies(engine.world);
+          console.log(bodies[0]);
+      });
 
       // update initial state
       updateDOM();
@@ -11202,14 +11279,6 @@
       matterExports.Events.on(runner, 'afterTick', updateDOM);
 
 
-
-  //   const loop = () => {
-  //     const bodies = Composite.allBodies(engine.world);
-  //     store.dispatch(updatePosition(bodies));
-  //     requestAnimationFrame(loop)
-  //   }
-
-  //   loop()
   };
 
   const SvgBackground = (props, children)=> {
@@ -11221,77 +11290,76 @@
       }, [children])
   };
 
-  const findBodyById = (id) => (state) =>
-    state.bodies.find((body) => body.id === id);
+  const findBodyById = (() => {
+    // cache indexes since they are stable
+    const cache = {};
+    return (id) => (state) => {
+      const index =
+        cache[id] === undefined
+          ? state.bodies.findIndex((body) => body.id === id)
+          : cache[id];
 
-  const pegSelector = key => findBodyById(selectPeg(key));
-  const pegTransform = (body = {}) => ({
-    r: body.circleRadius,
-    cx: body.initialXPosition + 350, //body.position.x,
-    cy: body.initialYPosition + WHEEL_RADIUS + 100,//body.position.y,
-    fill: "grey",
-    stroke: "black",
-    filter: "drop-shadow(2px 2px 2px rgb(0 0 0 / 0.5))",
-    style: {
-      "transform-origin": "center center",
-      "transform-box": "fill-box",
-      "stroke-width": 1,
-    }
-  });
+      return state.bodies[index];
+    };
+  })();
+
+  const WheelShadow = (props) => (
+    _render.createElement('g', {className: props.className}, [
+      _render.createElement('filter', {id: "blurFilter"}, [
+        _render.createElement('feGaussianBlur', {in: "SourceGraphic", stdDeviation: "3"})
+      ]),
+      _render.createElement('circle', {
+        className: "wheel__shadow",
+        cx: props.center.x + 5,
+        cy: props.center.y + 8,
+        r: props.radius,
+        style: {
+          fill: "rgba(0,0,0, 0.4)",
+          filter: "url(#blurFilter)",
+        }}
+      )
+    ])
+  );
 
   const Peg = (props) => (
     _render.createElement('circle', {
-      selector: pegSelector(props.key),
-      attributeTransform: pegTransform}
-      )
+      cx: props.center.x,
+      cy: props.center.y,
+      fill: "grey",
+      filter: "drop-shadow(3px 5px 2px rgb(0 0 0 / 0.5))",
+      r: props.radius,
+      stroke: "black",
+      style: {
+        "stroke-width": 1,
+        "transform-box": "fill-box",
+        "transform-origin": "center center",
+      }}
+    )
   );
 
-  const wheelSelector$2 = findBodyById(WHEEL_OF_FORTUNE);
-
-  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    var angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-    return {
-      x: centerX + radius * Math.cos(angleInRadians),
-      y: centerY + radius * Math.sin(angleInRadians),
-    };
-  };
-  const arcPath = ({ x, y, radius, innerRadius, startAngle, endAngle }) => {
-    var start = polarToCartesian(x, y, radius, endAngle);
-    var end = polarToCartesian(x, y, radius, startAngle);
-    var start2 = polarToCartesian(x, y, innerRadius, endAngle);
-    var end2 = polarToCartesian(x, y, innerRadius, startAngle);
-    var largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-    return [
-      "M",
-      start.x,
-      start.y,
-      "A",
-      radius,
-      radius,
-      0,
-      largeArcFlag,
-      0,
-      end.x,
-      end.y,
-      "L",
-      end2.x,
-      end2.y,
-      "A",
-      innerRadius,
-      innerRadius,
-      0,
-      largeArcFlag,
-      1,
-      start2.x,
-      start2.y,
-      "Z",
-    ].join(" ");
+  const PegGroup = (props) => {
+    return (
+      _render.createElement('g', null, [
+        props.pegs.map((peg, i) => {
+          return (
+            Peg({
+              center: {
+                x: peg.initialXPosition + props.width / 2,
+                y: peg.initialYPosition + props.wheelRadius + 100,
+              },
+              key: i,
+              radius: peg.circleRadius}
+            )
+          );
+        })
+      ])
+    );
   };
 
   const getGradientId = (index) => `slice-gradient-${index}`;
 
-  const SliceGradient = ({index, total}) => {
-    const value = Math.floor(index * 360/total);
+  const WheelSliceGradient = ({ index, total }) => {
+    const value = Math.floor((index * 360) / total);
     const color1 = `hsl(${value}, 100%, 50%)`;
     const color2 = `hsl(${value + 10}, 90%, 45%)`;
     return (
@@ -11304,68 +11372,112 @@
     );
   };
 
-  const sliceTransform =(startAngle, endAngle) =>  (wheel) => {
-    const x = wheel.initialX;
-    const y =wheel.initialY;
+  const degreesToRadians = (angle) => ((angle - 90) * Math.PI) / 180;
+  const getPathCoords = (center, radius, angleDegrees) => {
+    const angleRadians = degreesToRadians(angleDegrees);
     return {
-      d: arcPath({
-        x,
-        y,
-        startAngle,
-        endAngle,
-        innerRadius: 20,
-        radius: wheel.initialRadius,
-        innerRadius: 10
-      })
-    }
+      x: center.x + radius * Math.cos(angleRadians),
+      y: center.y + radius * Math.sin(angleRadians),
+    };
   };
 
-  const WheelSlice = ({ fill, stroke, index, totalSlices, ...props }) => {
-    const angle = 360 / totalSlices;
-    const offset = angle / 2;
-    const startAngle = angle * index + offset;
-    const endAngle = startAngle + angle;
+  const slicePath = ({
+    startAngle,
+    endAngle,
+    innerCircleRadius,
+    wheelCenter,
+    wheelRadius,
+  }) => {
+    const start = getPathCoords(wheelCenter, wheelRadius, endAngle);
+    const end = getPathCoords(wheelCenter, wheelRadius, startAngle);
+    const start2 = getPathCoords(wheelCenter, innerCircleRadius, endAngle);
+    const end2 = getPathCoords(wheelCenter, innerCircleRadius, startAngle);
+    const arcPortion = endAngle - startAngle <= 180 ? "0" : "1";
+    return [
+      ["M", start.x, start.y],
+      ["A", wheelRadius, wheelRadius, 0, arcPortion, 0, end.x, end.y],
+      ["L", end2.x, end2.y],
+      ["A", innerCircleRadius, innerCircleRadius, 0, arcPortion, 1, start2.x, start2.y],
+      ["Z"],
+    ]
+      .map((path) => path.join(" "))
+      .join(" ");
+  };
+
+  const INNER_CIRCLE_SIZE = 50;
+
+  const WheelSlice = ({
+    stroke,
+    index,
+    totalSlices,
+    wheelCenter,
+    wheelRadius,
+  }) => {
+    const angleSize = 360 / totalSlices;
+    const startPosition = angleSize / 2; // start slices offset from Pegs
+    const startAngle = angleSize * index + startPosition;
     return (
       _render.createElement('fragment', null, [
-        SliceGradient({total: totalSlices, index: index}),
+        WheelSliceGradient({total: totalSlices, index: index}),
         _render.createElement('path', {
+          className: "wheel__slice",
           fill: `url(#${getGradientId(index)})`,
-          stroke: stroke || "black",
-          selector: wheelSelector$2,
-          attributeTransform: sliceTransform(startAngle, endAngle)}
+          stroke: stroke,
+          d: slicePath({
+            startAngle,
+            endAngle: startAngle + angleSize,
+            innerCircleRadius: INNER_CIRCLE_SIZE,
+            wheelRadius,
+            wheelCenter,
+          })}
         )
-
       ])
     );
   };
 
+  const WheelSliceGroup = (props) => (
+    _render.createElement('g', {className: props.className}, [
+      Array.from({ length: props.sliceCount }).map((_, i) => {
+        return (
+          WheelSlice({
+            index: i,
+            totalSlices: props.sliceCount,
+            wheelCenter: props.wheelCenter,
+            wheelRadius: props.wheelRadius}
+          )
+        );
+      })
+    ])
+  );
+
+  // todo: move into util
   const getXYCoords = (angle, radius, offset) => ({
     x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
     y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
   });
 
-  const textTransform = (angle) => (wheel) => {
-    const distaceFromEdge = 70;
-    const { x, y } = getXYCoords(angle, wheel.initialRadius, distaceFromEdge);
-    return {
-      x: wheel.initialX - x, // todo: grab center of board
-      y: wheel.initialY - y,
-    };
-  };
+  const DISTANCE_FROM_EDGE = 80;
+  const TEXT_CONTAINER_SIZE = 10;
 
   const WheelText = (props, children) => {
     const angle = props.index * (360 / props.totalSlices);
+    const { x, y } = getXYCoords(angle, props.wheelRadius, DISTANCE_FROM_EDGE);
     return (
       _render.createElement('fragment', null, [
         _render.createElement('text', {
-          selector: wheelSelector$2,
-          attributeTransform: textTransform(angle),
+          fill: "black",
+          stroke: "white",
           'text-anchor': "middle",
+          x: props.wheelCenter.x - x,
+          y: props.wheelCenter.y - y + TEXT_CONTAINER_SIZE,
           style: {
             "font-weight": "bold",
             transform: `rotate(${270 - angle}deg)`,
             "transform-origin": "center center",
             "transform-box": "fill-box",
+            "text-shadow": "1px 1px 1px #000",
+            "stroke-weight": "0.5px",
+            "font-size": `24px`,
           }
         }, [
           children
@@ -11374,58 +11486,13 @@
     );
   };
 
-  const shadowTransform = (wheel) => ({
-    className: "shadow",
-    r: wheel.initialRadius,
-    cx: wheel.initialX + 5,
-    cy: wheel.initialY + 8,
-    fill: "rgba(0,0,0, 0.4)",
-    filter:"url(#blurFilter)"
-  });
-
-  const wheelSelector$1 = findBodyById(WHEEL_OF_FORTUNE);
-
-  const WheelShadow = (props) => (
-    _render.createElement('g', {className: props.className}, [
-      _render.createElement('filter', {id: "blurFilter"}, [
-        _render.createElement('feGaussianBlur', {in: "SourceGraphic", stdDeviation: "3"})
-      ]),
-      _render.createElement('circle', {
-        selector: wheelSelector$1,
-        attributeTransform: shadowTransform}
-      )
-    ])
-  );
-
-  const PegItems = (props) => _render.createElement('fragment', null, [
-       Array.from({ length: props.pegCount }).map((_, i) => {
-          return Peg({key: i});
-        })
-  ]);
-
-  const WheelSliceItems = (props) => (
-    _render.createElement('fragment', null, [
+  const WheelTextGroup = (props) => (
+    _render.createElement('g', null, [
       Array.from({ length: props.sliceCount }).map((_, i) => {
-        return (
-          WheelSlice({
-            index: i,
-            totalSlices: props.sliceCount}
-          //   radius={WHEEL_RADIUS}
-          //   // todo: ensure state set from selector on initial render
-          //   x={700 / 2}
-          //   y={WHEEL_RADIUS + stopperY + 10}
-          )
-        );
-      })
-    ])
-  );
-
-  const WheelTextItems = (props) => (
-    _render.createElement('fragment', null, [
-      Array.from({ length: props.sliceCount }).map((_, i) => {
-        // text must go on top
         return (
           WheelText({
+            wheelCenter: props.wheelCenter,
+            wheelRadius: props.wheelRadius,
             totalSlices: props.sliceCount,
             index: i
           }, [`$${i + 1}000`
@@ -11435,131 +11502,206 @@
     ])
   );
 
-  const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
-  const wheelTransform = (wheel = {}) => {
-    return {
-      r: wheel.circleRadius,
-      cx: wheel.initialX,
-      cy: wheel.initialY,
-      style: {
-        "transform-origin": "center center",
-        "transform-box": "fill-box",
-      },
-    };
-  };
+  const wheelSelector$1 = findBodyById(WHEEL_OF_FORTUNE);
 
   const wheelGroupTransform = (body) => ({
     x: body.position.x,
     y: body.position.y,
     style: {
       transform: `rotate(${body.angle}rad)`,
-      "transform-origin": "center center",
-      "transform-box": "fill-box",
-
     },
   });
 
   const Wheel = (props) => (
     _render.createElement('fragment', null, [
-      WheelShadow({className: "wheel__shadow"}),
-      _render.createElement('g', {className: "wheel__rotation-group", selector: wheelSelector, attributeTransform: wheelGroupTransform}, [
+      WheelShadow({
+        className: "wheel__shadow",
+        center: props.center,
+        radius: props.radius}
+      ),
+      _render.createElement('g', {
+        className: "wheel__rotation-group",
+        connect: wheelGroupTransform,
+        selector: wheelSelector$1,
+        style: {
+          "transform-box": "fill-box",
+          "transform-origin": "center center",
+        }
+      }, [
         _render.createElement('circle', {
           className: "wheel__background",
           fill: "grey",
           stroke: "black",
-          selector: wheelSelector,
-          attributeTransform: wheelTransform}
-        ),
-        WheelSliceItems({sliceCount: props.sliceCount}),
-        PegItems({pegCount: props.pegCount}),
+          cx: props.center.x,
+          cy: props.center.y,
+          r: props.radius,
+          style: {
+            "transform-box": "fill-box",
+            "transform-origin": "center center",
+          }}
 
-       WheelTextItems({sliceCount: props.sliceCount})
-       ])
+        ),
+        WheelSliceGroup({
+          className: "wheel__slices",
+          sliceCount: props.sliceCount,
+          wheelCenter: props.center,
+          wheelRadius: props.radius}
+          ),
+        PegGroup({
+          className: "wheel__pegs",
+          pegs: props.pegs,
+          wheelRadius: props.radius,
+          width: props.width}
+        ),
+
+        WheelTextGroup({
+          className: "wheel__slices-text",
+          sliceCount: props.sliceCount,
+          wheelCenter: props.center,
+          wheelRadius: props.radius}
+          )
+      ])
     ])
   );
 
   const stopperSelector = findBodyById(STOPPER);
-  const stopperLeftSelector = findBodyById(STOPPER_LEFT);
-  const stopperRightSelector = findBodyById(STOPPER_RIGHT);
 
-  const rectTransform = (body = {}) => {
-    return {
-      height: body.initialHeight,
-      width: body.initialWidth,
-      x: body.position.x - (body.initialWidth/2),
-      y: body.position.y - (body.initialWidth/2),
-      style: {
-        "fill": "#3d1919",
-        transform: `rotate(${body.angle}rad)`,
-        "transform-origin": "top left",
-        "transform-box": "fill-box",
+  const toPoints = (values) => values.map((item) => item.join(" ")).join(",");
 
-      }
-    }
-  };
-
-  const toPoints = (values) => values.map(item=>item.join(" ")).join(",");
-  const createStopperTrianglePoints = (body) => {
-    const width = body.initialHeight; // todo: fix this it is switched
-    const height = body.initialWidth;
-    const x = body.position.x - (width/2);
-    const y = body.position.y - (height/2);
+  const createStopperTrianglePoints = (stopper) => {
+    const width = stopper.initialWidth; // todo: fix this it is switched
+    const height = stopper.initialHeight;
+    const x = stopper.position.x - width / 2;
+    const y = stopper.position.y - height / 2;
     // end of stopper padding so collision doesnt appear to overlap
     const paddingBottom = 5;
     const topLeft = [x, y];
     const bottom = [x + width / 2, y + height - paddingBottom];
     const topRight = [x + width, y];
-    return toPoints([topLeft, bottom, topRight])
+    return toPoints([topLeft, bottom, topRight]);
   };
   const stopperTransform = (body) => ({
-      points: createStopperTrianglePoints(body),
-      style: {
-         transform: `rotate(${body.angle}rad)`,
-        "transform-origin": "4px 20px",
-        "transform-box": "fill-box",
-        "stroke-linejoin": "round",
-        "stroke-width": "3px",
-      },
-      filter: "drop-shadow(3px 5px 2px rgb(0 0 0 / 0.4))"
-    });
+    points: createStopperTrianglePoints(body),
+    style: {
+      transform: `rotate(${body.angle}rad)`,
+    },
+  });
 
   const Stopper = () => {
     return (
       _render.createElement('fragment', null, [
-        _render.createElement('rect', {
-          selector: stopperLeftSelector,
-          attributeTransform: rectTransform}),
-        _render.createElement('rect', {
-          selector: stopperRightSelector,
-          attributeTransform: rectTransform}
-        ),
         _render.createElement('polygon', {
-         fill: "orange",
-         stroke: "orange",
-         selector: stopperSelector, attributeTransform: stopperTransform})
+          connect: stopperTransform,
+          fill: "orange",
+          filter: "drop-shadow(1px 1px 1px rgb(0 0 0))",
+          selector: stopperSelector,
+          stroke: "orange",
+          style: {
+            "stroke-linejoin": "round",
+            "stroke-width": "3px",
+            "transform-box": "fill-box",
+            "transform-origin": "4px 20px",
+          }}
+        )
       ])
-    )
+    );
+  };
+
+  const Stand = (props) => {
+    const distancepastWheelTop = 40;
+    const width = 50;
+    return (
+      _render.createElement('rect', {
+        height: props.height,
+        width: width,
+        x: props.wheelCenter.x - width / 2,
+        y: props.wheelCenter.y - props.wheelRadius - distancepastWheelTop,
+        style: {
+          "stroke-width": 1,
+          "transform-box": "fill-box",
+          "transform-origin": "center center",
+        }}
+      )
+    );
+  };
+
+  const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
+
+  const scoreboardTransform = (state)=>{
+      if(state.spinStatus === state.IDLE) return {}
+      const {angularSpeed, angle } = wheelSelector(state);
+      return {
+          textContent: angularSpeed > 0.001 ? `spinning ${angle} speed: ${angularSpeed}` : `stopped at ${angle}`
+      }
+  };
+
+  const Scoreboard = () => {
+      return _render.createElement('section', null, [
+          _render.createElement('h4', {selector: state=> state, connect: scoreboardTransform})
+      ])
+  };
+
+  const pegsSelector = ({bodies}) => bodies.filter(body => body.id.startsWith(PEG));
+
+  const mobileRegExs = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i;
+  const isMobile = () => navigator.userAgent.match(mobileRegExs);
+
+  const wheelInititalPosition = (state) => {
+    const wheel = wheelSelector(state);
+    return {
+      center: {
+        x: wheel.initialXPosition,
+        y: wheel.initialYPosition,
+      },
+      radius: wheel.initialRadius,
+    };
+  };
+
+
+  const getUASpinEvents = ({ handleDragWheel, handleReleaseWheel}) =>{
+    // sniff user agent to attach mobile vs desktop events
+    const isMobileDevice = isMobile();
+    const startEvent = isMobileDevice ? "onTouchStart" : "onMouseDown";
+    const endEvent = isMobileDevice ? "onTouchEnd": "onMouseUp";
+    return {
+      [startEvent]: handleDragWheel,
+      [endEvent]: handleReleaseWheel
+    }
   };
 
   const App = () => {
-      const {height, width} = store.getState();
-      return (
-          _render.createElement('main', {store: store}, [
-          _render.createElement('h1', {className: "main__title"}, [
-              "Wheel of Fortune"
-          ]),
-          _render.createElement('div', {style: {position: "absolute", "pointer-events": "none"}}, [
+    const { height, width, ...state } = store.getState();
+    const { center, radius } = wheelInititalPosition(state);
+    const handleDragWheel = ()=>{
+      store.dispatch(updateSpinStatus(SPIN_STATUS.DRAGGING));
+    };
+    const handleReleaseWheel = ()=>{
+      store.dispatch(updateSpinStatus(SPIN_STATUS.SPINNING));
+    };
+    const spinEvents = getUASpinEvents({ handleDragWheel, handleReleaseWheel });
+    return (
+      _render.createElement('main', {store: store}, [
+        _render.createElement('h1', {className: "main__title"}, ["Wheel of Fortune"]),
+        Scoreboard(),
+        _render.createElement('div', Object.assign({classname: "main__svg-container"}, spinEvents,
+          {style: { position: "absolute", "pointer-events": "none"}
+          }), [
           SvgBackground({height: height, width: width}, [
-            Wheel({sliceCount: WHEEL_SLICE_COUNT, pegCount: PEG_COUNT}),
+            Stand({height: height, wheelCenter: center, wheelRadius: radius}),
+            Wheel({
+              center: center,
+              radius: radius,
+              sliceCount: WHEEL_SLICE_COUNT, // todo: move to store
+              pegs: pegsSelector(state),
+              height: height,
+              width: width}
+            ),
             Stopper()
           ])
-          ])
-          ])
-      );
-    };
-
-  const renderToDOM = (selector, App) => {
-      document.querySelector(selector).appendChild(App);
+        ]),
+        Scoreboard()
+      ])
+    );
   };
 
   const initApp = () => {

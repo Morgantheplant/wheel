@@ -8,9 +8,11 @@
     "dev": "rollup -c -w"
   },
   "dependencies": {
+    "@rollup/plugin-alias": "^4.0.3",
     "@rollup/plugin-commonjs": "^24.0.0",
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-terser": "^0.3.0",
+    "_render": "./packages/render",
     "axios": "^1.2.2",
     "matter-js": "^0.18.0",
     "matterjs": "^0.1.3",

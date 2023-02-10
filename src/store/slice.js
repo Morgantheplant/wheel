@@ -1,18 +1,20 @@
+import { SPIN_STATUS } from "../contants/wheel";
 import { createAction } from "./createAction";
 import { createStore } from "./createStore";
 
 export const UPDATE_POSITION = "UPDATE_POSITION";
 export const UPDATE_VIEWPORT_SIZE = "UPDATE_VIEWPORT_SIZE";
-export const COLLISION_DETECTED = "COLISSION_DETECTED";
+export const UPDATE_SPIN_STATUS = "UPDATE_SPIN_STATUS";
 
 export const updatePosition = createAction(UPDATE_POSITION);
 export const updateViewportSize = createAction(UPDATE_VIEWPORT_SIZE);
-export const collisionDetected = createAction(COLLISION_DETECTED);
+export const updateSpinStatus = createAction(UPDATE_SPIN_STATUS);
 
 const defaultState = {
   bodies: [],
   height: 700,
-  width: 700
+  width: 700,
+  spinStatus: SPIN_STATUS.IDLE
 }
 
 export const wheelReducer = (state=defaultState, action={}) => {
@@ -25,12 +27,12 @@ export const wheelReducer = (state=defaultState, action={}) => {
           height: action.payload.height,
           width: action.payload.width
         }
-      case COLLISION_DETECTED:
+      case SPIN_STATUS:
         return {
           ...state,
-          current_collided: action.payload,
-          previous_collided: state.current_collided
-        }  
+          spinStatus: action.payload
+        }
+
        default:   
         return state;
     }

@@ -2,11 +2,11 @@
 const isObject = (value) => typeof value === 'object' && !Array.isArray(value) && value !== null
 
 /** memo transforms so only changed values are returned  */
-export const memo = (transform) => {
+export const memoTransform = (transform) => {
     const cache = {};
     
     const memoize = (...args) => {
-        const transformValues = transform(...args);
+        const transformValues = transform(...args) || {};
         return Object.entries(transformValues).reduce((acc, [key, value]) => {
             
             // handles any sub dict values
