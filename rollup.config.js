@@ -1,46 +1,38 @@
-import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import json from '@rollup/plugin-json';
-import terser from '@rollup/plugin-terser';
-import jsx from 'rollup-plugin-jsx'
-import alias from '@rollup/plugin-alias';
+import resolve from "@rollup/plugin-node-resolve";
+import commonjs from "@rollup/plugin-commonjs";
+import json from "@rollup/plugin-json";
+import terser from "@rollup/plugin-terser";
+import typescript from "@rollup/plugin-typescript";
+import jsx from "acorn-jsx";
+import replace from "@rollup/plugin-replace";
 
-const isProduction = process.env.NODE_ENV === 'production'
+const isProduction = process.env.NODE_ENV === "production";
 
-const settings = {
-    globals: {
-      ms: 'ms'
-    },
-  }
-  
 export default {
-  input: "src/index.js",
+  input: "src/index.tsx",
   output: {
-    file: 'static/bundle.js',
-    format: 'umd',
+    file: "static/bundle.js",
+    format: "umd",
     name: "entrypoint",
-    ...settings,
-    plugins: [
-        isProduction && terser()
-      ]
+    plugins: [isProduction && terser()],
   },
+  acornInjectPlugins: [jsx()],
   plugins: [
-    jsx( { factory: "_render.createElement" } ),
-    json(), 
+    replace({
+      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
+      preventAssignment: true
+    }),
+    json(),
     resolve({
       jsnext: true,
-      main: true
+      main: true,
     }),
     commonjs({
-      include: 'node_modules/**',
-      extensions: [ '.js' ],
+      include: "node_modules/**",
+      extensions: [".js", ".ts" ,".tsx"],
       ignoreGlobal: false,
-      sourceMap: false
+      sourceMap: true,
     }),
-    alias({
-      entries: [
-        { find: '_render', replacement: 'packages/render/index.js' },
-      ]
-    })
-]
+    typescript(),
+  ],
 };

@@ -1,0 +1,5 @@
+export enum SPIN_STATUS {
+  IDLE = "IDLE",
+  SPINNING = "SPINING",
+  DRAGGING = "DRAGGING",
+}
