@@ -1,27 +1,27 @@
-import { Engine, Render, Runner, Composite, Body, Events, Constraint } from "matter-js";
+import {
+  Engine,
+  Runner,
+  Composite,
+  Body,
+  Events,
+} from "matter-js";
 import { updatePosition, WheelState, WheelAction } from "../store/slice";
-import { HEIGHT, PEG_COUNT, WHEEL_RADIUS, WIDTH } from "../settings";
+import {  PEG_COUNT, WHEEL_RADIUS } from "../settings";
 import { createStopperEntities } from "./createStopperEntities";
 import { createWheelEntities } from "./createWheelEntities";
 import { createPegEntities } from "./createPegEntities";
 import { createMouseEntities } from "./createMouseEntities";
-import { createStore } from "../store/createStore";
+import { createStore } from "../../packages/store/createStore";
+import { createDebugger } from "./createDebugger";
 
-export const initPhysics = <S extends object, A extends object>(store: ReturnType<typeof createStore<WheelState, WheelAction>>) => {
+export const initPhysics = <S extends object, A extends object>(
+  store: ReturnType<typeof createStore<WheelState, WheelAction>>,
+  options?: { debug: boolean }
+) => {
   const engine = Engine.create();
-
-  const screenWidth = WIDTH;
-  const screenHeight = HEIGHT;
-
-  // create a renderer
-  const render = Render.create({
-    element: document.body,
-    engine: engine,
-    options: {
-      width: screenWidth,
-      height: screenHeight,
-    },
-  });
+  const { height, width } = store.getState();
+  const screenWidth = width;
+  const screenHeight = height;
 
   // collision filtering between pegs/wheel
   const wheelGroup = Body.nextGroup(true);
@@ -49,9 +49,9 @@ export const initPhysics = <S extends object, A extends object>(store: ReturnTyp
     stopperHeight: 44,
     stopperWidth: 8,
     stopperCollisionFilter: {
-        group: wheelGroup,
-        mask: pegStopperCategory,
-      }
+      group: wheelGroup,
+      mask: pegStopperCategory,
+    },
   });
 
   const pegEntities = createPegEntities({
@@ -59,52 +59,46 @@ export const initPhysics = <S extends object, A extends object>(store: ReturnTyp
     wheelRadius: WHEEL_RADIUS,
     offset: 10,
     collisionFilterMask: pegStopperCategory,
-    wheel: wheelEntities[0] as Matter.Body
+    wheel: wheelEntities[0],
   });
 
   const mouseEntities = createMouseEntities({
     engine,
     collisionFilterMask: wheelMouse | pegStopperCategory,
-    render,
   });
 
   // todo: remove forEach. ...spread syntax not working
-  [
-    wheelEntities,
-    stopperEntities,
-    pegEntities,
-    mouseEntities
-  ].forEach(entityGroup=>{
-    // add all of the bodies to the world
-    Composite.add(engine.world, entityGroup as Matter.Body[]);
-  })
-
-    // dispatch DOM updates
-    let spinning = false
-    const updateDOM = () => {
-        const bodies = Composite.allBodies(engine.world);
-        store.dispatch(updatePosition(bodies));
+  [wheelEntities, stopperEntities, pegEntities, mouseEntities].forEach(
+    (entityGroup) => {
+      // add all of the bodies to the world
+      Composite.add(engine.world, entityGroup as Matter.Body[]);
     }
+  );
 
-    window.addEventListener('keydown', ()=>{
-        const bodies = Composite.allBodies(engine.world);
-        console.log(bodies[0])
-    })
+  if (options?.debug) {
+    createDebugger({
+      engine,
+      mouse: mouseEntities[0],
+      screenHeight,
+      screenWidth,
+    });
+  }
 
-    // update initial state
-    updateDOM()
+  // dispatch DOM updates
+  const updateDOM = () => {
+    const bodies = Composite.allBodies(engine.world);
+    store.dispatch(updatePosition(bodies));
+  };
 
-    // run the renderer
-    Render.run(render);
+  // update initial state
+  updateDOM();
 
-    // create runner
-    const runner = Runner.create();
+  // create runner
+  const runner = Runner.create();
 
-    // run the engine
-    Runner.run(runner, engine);
+  // run the engine
+  Runner.run(runner, engine);
 
-    // update DOM on each tick
-    Events.on(runner, 'afterTick', updateDOM)
-
-    
+  // update DOM on each tick
+  Events.on(runner, "afterTick", updateDOM);
 };

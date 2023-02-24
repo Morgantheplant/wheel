@@ -1,4 +1,4 @@
-import { createStore } from "../../src/store/createStore";
+import { createStore } from "../store/createStore";
 
 declare global {
   namespace JSX {

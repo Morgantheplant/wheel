@@ -30,6 +30,16 @@
         return t;
     }
 
+    function __awaiter(thisArg, _arguments, P, generator) {
+        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    }
+
     const isObject = (value) => typeof value === 'object' && !Array.isArray(value) && value !== null;
     /** memo transforms so only changed values are returned  */
     const memoTransform = (transform) => {
@@ -199,8 +209,9 @@
                 : document.createElement(component || 'div');
             if (props) {
                 // set DOM/SVG attributes, events and textContent
-                const { store, selector, connect } = props, restProps = __rest(props, ["store", "selector", "connect"]);
+                const { store, selector, connect, ref } = props, restProps = __rest(props, ["store", "selector", "connect", "ref"]);
                 updateElement($element, restProps);
+                ref && ref($element);
                 //connects app/handlers to store
                 const connectedStore = connectStore({
                     element: $element,
@@ -243,6 +254,7 @@
         if (!entry)
             throw Error('Entrypoint not found. Pass a valid CSS selector');
         entry.appendChild(App);
+        return entry;
     };
 
     var _render = { createElement };
@@ -11041,13 +11053,29 @@
         ActionType["UPDATE_SPIN_STATUS"] = "UPDATE_SPIN_STATUS";
     })(ActionType || (ActionType = {}));
     const updatePosition = createAction(ActionType.UPDATE_POSITION);
-    createAction(ActionType.UPDATE_VIEWPORT_SIZE);
+    const updateViewportSize = createAction(ActionType.UPDATE_VIEWPORT_SIZE);
     const updateSpinStatus = createAction(ActionType.UPDATE_SPIN_STATUS);
+    const defaultSlices = [
+        { text: "$4000" },
+        { text: "Lose A Turn" },
+        { text: "$550" },
+        { text: "$500" },
+        { text: "$400" },
+        { text: "$600" },
+        { text: "Bankrupt" },
+        { text: "$3500" },
+        { text: "$900" },
+        { text: "$0 Free Spin" },
+        { text: "Surprise" },
+        { text: "$50" }
+    ];
     const defaultState = {
         bodies: [],
         height: 700,
         width: 700,
         spinStatus: SPIN_STATUS.IDLE,
+        slices: defaultSlices,
+        sliceCount: defaultSlices.length,
     };
     const wheelReducer = (state = defaultState, action) => {
         if (!action)
@@ -11066,10 +11094,8 @@
     const store = createStore(wheelReducer, defaultState);
 
     const WIDTH = 700; //Math.max(innerWidth, 150);
-    const HEIGHT = 700; //Math.max(innerHeight - 100, screenWidth)
     const WHEEL_RADIUS = WIDTH / 3;
     const PEG_COUNT = 24;
-    const WHEEL_SLICE_COUNT = 12;
 
     const PEG = "PEG";
     const STOPPER = "STOPPER";
@@ -11167,7 +11193,7 @@
         return pegEntities;
     };
 
-    const createMouseEntities = ({ engine, collisionFilterMask, render }) => {
+    const createMouseEntities = ({ engine, collisionFilterMask, }) => {
         const mouse = matterExports.Mouse.create(document.body);
         const mouseConstraint = matterExports.MouseConstraint.create(engine, {
             mouse: mouse,
@@ -11179,15 +11205,26 @@
             },
         });
         mouseConstraint.collisionFilter.mask = collisionFilterMask;
-        // keep the mouse in sync with rendering
-        render.mouse = mouse;
         return [mouse, mouseConstraint];
     };
 
-    const initPhysics = (store) => {
-        const engine = matterExports.Engine.create();
-        const screenWidth = WIDTH;
-        const screenHeight = HEIGHT;
+    const createDebugger = ({ engine, mouse, screenHeight, screenWidth, }) => {
+        // print bodies to console on keydown
+        window.addEventListener("keydown", () => {
+            const bodies = matterExports.Composite.allBodies(engine.world);
+            console.log(bodies[0]);
+        });
+        const entry = document.querySelector("#entry-point");
+        const button = document.createElement("button");
+        button.innerText = "Debug: Hide SVG";
+        button.setAttribute("style", "position: absolute; top: 10px; right: 10px;");
+        let hidden = false;
+        button.addEventListener("click", () => {
+            hidden = !hidden;
+            entry === null || entry === void 0 ? void 0 : entry.setAttribute("style", `display: ${hidden ? "none" : "block"}`);
+            button.innerText = hidden ? "Debug: Show SVG" : "Debug: Hide SVG";
+        });
+        document.body.appendChild(button);
         // create a renderer
         const render = matterExports.Render.create({
             element: document.body,
@@ -11195,8 +11232,21 @@
             options: {
                 width: screenWidth,
                 height: screenHeight,
+                showStats: true,
+                showDebug: true,
             },
         });
+        // keep the mouse in sync with rendering
+        render.mouse = mouse;
+        // run the Matter js canvas renderer
+        matterExports.Render.run(render);
+    };
+
+    const initPhysics = (store, options) => {
+        const engine = matterExports.Engine.create();
+        const { height, width } = store.getState();
+        const screenWidth = width;
+        const screenHeight = height;
         // collision filtering between pegs/wheel
         const wheelGroup = matterExports.Body.nextGroup(true);
         // collision category between stopper and pegs
@@ -11222,52 +11272,49 @@
             stopperCollisionFilter: {
                 group: wheelGroup,
                 mask: pegStopperCategory,
-            }
+            },
         });
         const pegEntities = createPegEntities({
             pegCount: PEG_COUNT,
             wheelRadius: WHEEL_RADIUS,
             offset: 10,
             collisionFilterMask: pegStopperCategory,
-            wheel: wheelEntities[0]
+            wheel: wheelEntities[0],
         });
         const mouseEntities = createMouseEntities({
             engine,
             collisionFilterMask: wheelMouse | pegStopperCategory,
-            render,
         });
         // todo: remove forEach. ...spread syntax not working
-        [
-            wheelEntities,
-            stopperEntities,
-            pegEntities,
-            mouseEntities
-        ].forEach(entityGroup => {
+        [wheelEntities, stopperEntities, pegEntities, mouseEntities].forEach((entityGroup) => {
             // add all of the bodies to the world
             matterExports.Composite.add(engine.world, entityGroup);
         });
+        if (options === null || options === void 0 ? void 0 : options.debug) {
+            createDebugger({
+                engine,
+                mouse: mouseEntities[0],
+                screenHeight,
+                screenWidth,
+            });
+        }
+        // dispatch DOM updates
         const updateDOM = () => {
             const bodies = matterExports.Composite.allBodies(engine.world);
             store.dispatch(updatePosition(bodies));
         };
-        window.addEventListener('keydown', () => {
-            const bodies = matterExports.Composite.allBodies(engine.world);
-            console.log(bodies[0]);
-        });
         // update initial state
         updateDOM();
-        // run the renderer
-        matterExports.Render.run(render);
         // create runner
         const runner = matterExports.Runner.create();
         // run the engine
         matterExports.Runner.run(runner, engine);
         // update DOM on each tick
-        matterExports.Events.on(runner, 'afterTick', updateDOM);
+        matterExports.Events.on(runner, "afterTick", updateDOM);
     };
 
     const SvgBackground = (props) => {
-        return _render.createElement("svg", { version: "1.1", width: props.width, height: props.height, style: { background: 'grey' } }, props.children);
+        return _render.createElement("svg", { style: props.style, version: "1.1", width: props.width, height: props.height }, props.children);
     };
 
     const findBodyById = (() => {
@@ -11342,8 +11389,8 @@
     const INNER_CIRCLE_SIZE = 50;
     const WheelSlice = ({ stroke, index, totalSlices, wheelCenter, wheelRadius, }) => {
         const angleSize = 360 / totalSlices;
-        const startPosition = angleSize / 2; // start slices offset from Pegs
-        const startAngle = angleSize * index + startPosition;
+        const startPositionOffset = angleSize / 2; // start slices offset from Pegs
+        const startAngle = angleSize * index + startPositionOffset;
         return (_render.createElement("fragment", null,
             _render.createElement(WheelSliceGradient, { total: totalSlices, index: index }),
             _render.createElement("path", { className: "wheel__slice", fill: `url(#${getGradientId(index)})`, stroke: stroke, d: slicePath({
@@ -11356,7 +11403,7 @@
     };
 
     const WheelSliceGroup = (props) => (_render.createElement("g", { className: props.className }, Array.from({ length: props.sliceCount }).map((_, i) => {
-        return (_render.createElement(WheelSlice, { index: i, totalSlices: props.sliceCount, wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius }));
+        return (_render.createElement(WheelSlice, { index: i, stroke: "black", totalSlices: props.sliceCount, wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius }));
     })));
 
     // todo: move into util
@@ -11364,7 +11411,7 @@
         x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
         y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
     });
-    const DISTANCE_FROM_EDGE = 80;
+    const DISTANCE_FROM_EDGE = 90;
     const TEXT_CONTAINER_SIZE = 10;
     const WheelText = (props) => {
         const angle = props.index * (360 / props.totalSlices);
@@ -11372,18 +11419,21 @@
         return (_render.createElement("fragment", null,
             _render.createElement("text", { fill: "black", stroke: "white", "text-anchor": "middle", x: props.wheelCenter.x - x, y: props.wheelCenter.y - y + TEXT_CONTAINER_SIZE, style: {
                     fontWeight: "bold",
+                    fontFamily: "'Alfa Slab One', verdana",
                     transform: `rotate(${270 - angle}deg)`,
                     transformOrigin: "center center",
                     transformBox: "fill-box",
-                    textShadow: "1px 1px 1px #000",
-                    // strokeWeight: "0.5px",
-                    fontSize: `24px`,
+                    // textShadow: "1px 1px 1px #000",
+                    fontSize: `20px`,
                 } }, props.children)));
     };
 
-    const WheelTextGroup = (props) => (_render.createElement("g", null, Array.from({ length: props.sliceCount }).map((_, i) => {
-        return (_render.createElement(WheelText, { wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius, totalSlices: props.sliceCount, index: i }, `$${i + 1}000`));
-    })));
+    const WheelTextGroup = (props) => {
+        const textValues = props.slices || Array.from({ length: props.sliceCount });
+        return (_render.createElement("g", { className: props.className }, textValues.map((slice, i) => {
+            return (_render.createElement(WheelText, { wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius, totalSlices: props.sliceCount, index: i }, (slice === null || slice === void 0 ? void 0 : slice.text) || `$${i + 1}000`));
+        })));
+    };
 
     const wheelSelector$1 = findBodyById(WHEEL_OF_FORTUNE);
     const wheelGroupTransform = (body) => ({
@@ -11398,14 +11448,26 @@
         _render.createElement("g", { className: "wheel__rotation-group", connect: wheelGroupTransform, selector: wheelSelector$1, style: {
                 transformBox: "fill-box",
                 transformOrigin: "center center",
+                cursor: "grab"
             } },
-            _render.createElement("circle", { className: "wheel__background", fill: "grey", stroke: "black", cx: props.center.x, cy: props.center.y, r: props.radius, style: {
+            _render.createElement("circle", { className: "wheel__background", fill: "rgb(147 198 147)", stroke: "black", cx: props.center.x, cy: props.center.y, r: props.radius, style: {
+                    strokeWidth: '5px',
+                    transformBox: "fill-box",
+                    transformOrigin: "center center",
+                } }),
+            _render.createElement("circle", { className: "wheel__background", fill: "rgb(147 198 147)", stroke: "black", cx: props.center.x, cy: props.center.y, r: 50, style: {
+                    strokeWidth: '5px',
+                    transformBox: "fill-box",
+                    transformOrigin: "center center",
+                } }),
+            _render.createElement("circle", { className: "wheel__center", fill: "grey", stroke: "rgb(50,50,50)", cx: props.center.x, cy: props.center.y, r: 10, style: {
+                    strokeWidth: "5px",
                     transformBox: "fill-box",
                     transformOrigin: "center center",
                 } }),
             _render.createElement(WheelSliceGroup, { className: "wheel__slices", sliceCount: props.sliceCount, wheelCenter: props.center, wheelRadius: props.radius }),
-            _render.createElement(PegGroup, { className: "wheel__pegs", pegs: props.pegs, wheelRadius: props.radius, width: props.width }),
-            _render.createElement(WheelTextGroup, { className: "wheel__slices-text", sliceCount: props.sliceCount, wheelCenter: props.center, wheelRadius: props.radius }))));
+            _render.createElement(WheelTextGroup, { className: "wheel__slices-text", slices: props.slices, sliceCount: props.sliceCount, wheelCenter: props.center, wheelRadius: props.radius }),
+            _render.createElement(PegGroup, { className: "wheel__pegs", pegs: props.pegs, wheelRadius: props.radius, width: props.width }))));
 
     const stopperSelector = findBodyById(STOPPER);
     const toPoints = (values) => values.map((item) => item.join(" ")).join(",");
@@ -11440,34 +11502,161 @@
     const Stand = (props) => {
         const distancepastWheelTop = 40;
         const width = 50;
-        return (_render.createElement("rect", { height: props.height, width: width, x: props.wheelCenter.x - width / 2, y: props.wheelCenter.y - props.wheelRadius - distancepastWheelTop, style: {
+        return (_render.createElement("rect", { height: props.height, width: width, stroke: "grey", x: props.wheelCenter.x - width / 2, y: props.wheelCenter.y - props.wheelRadius - distancepastWheelTop, style: {
                 strokeWidth: 1,
                 transformBox: "fill-box",
                 transformOrigin: "center center",
             } }));
     };
 
+    const getDecimal = (n) => n - Math.floor(n);
+
+    // convert radian rotation value to degrees 
+    const radianRotationsToDegrees = (angle) => {
+        const rotations = angle / (2 * Math.PI); // radian to rotations
+        const degreeRotation = 360 * getDecimal(rotations);
+        return degreeRotation > 0 ? 360 - degreeRotation : degreeRotation;
+    };
+
+    const getAngleWithOffset = (angle, offset) => {
+        const angleWithOffset = radianRotationsToDegrees(angle) - offset;
+        // translate to value between 0 and 360
+        return angleWithOffset > 360
+            ? 360 - angleWithOffset
+            : angleWithOffset < 0
+                ? 360 + angleWithOffset
+                : angleWithOffset;
+    };
+    // translate indices at start and end of circle
+    const circularIndexResolver = (total) => (index) => {
+        switch (true) {
+            case index >= total:
+                return total - index;
+            case index < 0:
+                return total + index;
+            default:
+                return index;
+        }
+    };
+    const calculatePosition = (angle, count) => {
+        const angleSize = 360 / count;
+        const startPositionOffset = angleSize / 2;
+        return getAngleWithOffset(angle, startPositionOffset) / angleSize;
+    };
+    const findIndexFromPosition = (position) => {
+        const index = 12 - Math.ceil(position);
+        const difference = 12 - position - index;
+        const shouldCheckStopper = difference > 0.85 || difference < 0.2;
+        return {
+            index,
+            shouldCheckStopper,
+        };
+    };
+    const calculateScoreboardIndex = (angle, state) => {
+        const currentPosition = calculatePosition(angle, state.sliceCount);
+        const { index, shouldCheckStopper } = findIndexFromPosition(currentPosition);
+        const getIndexFromCircle = circularIndexResolver(state.sliceCount);
+        if (shouldCheckStopper) {
+            const stopper = findBodyById(STOPPER)(state);
+            const stopperIsRight = stopper.angle < -0.01;
+            if (stopperIsRight) {
+                return getIndexFromCircle(index - 1);
+            }
+            const stopperIsLeft = stopper.angle > 0.02;
+            if (stopperIsLeft) {
+                return getIndexFromCircle(index + 1);
+            }
+        }
+        return getIndexFromCircle(index);
+    };
+
     const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
+    const isWheelSpinning = (speed) => speed > 0.001;
 
     const scoreboardTransform = (state) => {
-        // if (state.spinStatus === SPIN_STATUS.IDLE) return {};
+        var _a;
         const { angularSpeed, angle } = wheelSelector(state);
+        const index = calculateScoreboardIndex(angle, state);
+        const value = (state.slices && ((_a = state.slices[index]) === null || _a === void 0 ? void 0 : _a.text)) || index;
         return {
-            textContent: angularSpeed > 0.001
-                ? `spinning ${angle} speed: ${angularSpeed}`
-                : `stopped at ${angle}`,
+            textContent: isWheelSpinning(angularSpeed)
+                ? `${value}`
+                : `You selected: ${value}`,
         };
     };
     const scoreboardSelector = (state) => state;
     const Scoreboard = () => {
-        return (_render.createElement("section", null,
-            _render.createElement("h4", { selector: scoreboardSelector, connect: scoreboardTransform })));
+        return (_render.createElement("section", { style: {
+                position: "absolute",
+                fontFamily: "'Alfa Slab One', verdana",
+                padding: "5px 20px",
+                border: "2px solid rgb(60,60,60)",
+                width: '150px',
+                height: '80px',
+                textAlign: "center",
+                borderRadius: "5px",
+                bottom: "10px",
+                left: "50%",
+                transform: 'translate(-50%)',
+                zIndex: "1000",
+                color: "white",
+                textShadow: [
+                    "0 0 2px black",
+                    "0 0 7px #bdff9f",
+                    "0 0 10px #bdff9f",
+                    "0 0 21px #bdff9f",
+                    "0 0 36px #bdff9f",
+                ].join(", "),
+                backgroundColor: "black",
+            } },
+            _render.createElement("p", { selector: scoreboardSelector, connect: scoreboardTransform })));
     };
 
     const pegsSelector = ({ bodies }) => bodies.filter(body => body.label.startsWith(PEG));
 
     const mobileRegExs = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i;
     const isMobile = () => !!navigator.userAgent.match(mobileRegExs);
+
+    const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+
+    const setScale = (element, scale) => setStyles(element, {
+        transform: `scale(${scale}, ${scale})`
+    });
+    const TITLE_GROW_SCALE = 1.5;
+    const TITLE_DEFAULT_SCALE = 1;
+    const TITLE_SCALE_TIME_MS = 800;
+    const introAnimation = (element, index) => __awaiter(void 0, void 0, void 0, function* () {
+        if (!element)
+            return;
+        yield sleep((index + 1) * TITLE_SCALE_TIME_MS);
+        setScale(element, TITLE_GROW_SCALE);
+        yield sleep(TITLE_SCALE_TIME_MS);
+        setScale(element, TITLE_DEFAULT_SCALE);
+    });
+    const Title = ({ children }) => {
+        return _render.createElement("h1", { className: "main__title", style: {
+                color: "white",
+                fontFamily: "Passion One, verdana, sans-serif",
+                position: "absolute",
+                top: "20px",
+                left: "40px",
+                zIndex: "1000",
+                display: "flex",
+                flexDirection: "row"
+            } }, children && children[0].split(" ").map((child, i) => {
+            return _render.createElement("span", { style: {
+                    display: "inline-block",
+                    transition: `transform ${TITLE_SCALE_TIME_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+                    cursor: "pointer",
+                    textShadow: "2px 2px 2px black",
+                    paddingRight: "10px"
+                }, ref: (ref) => introAnimation(ref, i), onMouseEnter: (e) => {
+                    setScale(e.target, TITLE_GROW_SCALE);
+                }, onMouseLeave: (e) => {
+                    setScale(e.target, TITLE_DEFAULT_SCALE);
+                } }, child);
+        }));
+    };
 
     const wheelInititalPosition = (state) => {
         const wheel = wheelSelector(state);
@@ -11500,18 +11689,18 @@
         };
         const spinEvents = getUASpinEvents({ handleDragWheel, handleReleaseWheel });
         return (_render.createElement("main", { store: store },
-            _render.createElement("h1", { className: "main__title" }, "Wheel of Fortune"),
+            _render.createElement(Title, null, "Wheel of Misfortune"),
             _render.createElement(Scoreboard, null),
             _render.createElement("div", Object.assign({ className: "main__svg-container" }, spinEvents, { style: { position: "absolute", pointerEvents: "none" } }),
-                _render.createElement(SvgBackground, { height: state.height, width: state.width },
+                _render.createElement(SvgBackground, { style: { background: 'url("static/background.png")', cursor: 'grab' }, height: state.height, width: state.width },
                     _render.createElement(Stand, { height: state.height, wheelCenter: center, wheelRadius: radius }),
-                    _render.createElement(Wheel, { center: center, radius: radius, sliceCount: WHEEL_SLICE_COUNT, pegs: pegsSelector(state), height: state.height, width: state.width }),
-                    _render.createElement(Stopper, null))),
-            _render.createElement(Scoreboard, null)));
+                    _render.createElement(Wheel, { center: center, radius: radius, sliceCount: state.sliceCount, slices: state.slices, pegs: pegsSelector(state), height: state.height, width: state.width }),
+                    _render.createElement(Stopper, null)))));
     };
 
     const initApp = () => {
-        initPhysics(store);
+        store.dispatch(updateViewportSize({ height: window.innerWidth, width: window.innerWidth }));
+        initPhysics(store, { debug: false });
         renderToDOM("#entry-point", _render.createElement(App, null));
     };
     document.addEventListener("DOMContentLoaded", initApp);

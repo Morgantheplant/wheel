@@ -11,7 +11,7 @@ export const createWheelEntities = ({
   wheelCenterY: number,
   wheelRadius: number,
   collisionFilter: Matter.ICollisionFilter,
-}) => {
+}): [Matter.Body, Constraint] => {
   const wheel = Bodies.circle(wheelCenterX, wheelCenterY, wheelRadius, {
     collisionFilter,
     label: WHEEL_OF_FORTUNE,

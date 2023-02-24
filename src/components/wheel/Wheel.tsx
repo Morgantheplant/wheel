@@ -5,6 +5,7 @@ import { WheelShadow } from "./WheelShadow";
 import { PegGroup } from "./PegGroup";
 import { WheelSliceGroup } from "./WheelSliceGroup";
 import { WheelTextGroup } from "./WheelTextGroup";
+import { WheelSlice } from "src/store/slice";
 
 const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
 
@@ -21,6 +22,7 @@ type WheelProps = {
   width: number;
   center: { x: number; y: number };
   radius: number;
+  slices?: WheelSlice[];
   sliceCount: number;
   pegs: Matter.Body[];
 }
@@ -39,22 +41,57 @@ export const Wheel = (props: WheelProps) => (
       style={{
         transformBox: "fill-box",
         transformOrigin: "center center",
+        cursor: "grab"
       }}
     >
       <circle
         className="wheel__background"
-        fill="grey"
+        fill="rgb(147 198 147)"
         stroke="black"
         cx={props.center.x}
         cy={props.center.y}
         r={props.radius}
         style={{
+          strokeWidth: '5px',
+          transformBox: "fill-box",
+          transformOrigin: "center center",
+        }}
+      />
+      <circle
+        className="wheel__background"
+        fill="rgb(147 198 147)"
+        stroke="black"
+        cx={props.center.x}
+        cy={props.center.y}
+        r={50}
+        style={{
+          strokeWidth: '5px',
+          transformBox: "fill-box",
+          transformOrigin: "center center",
+        }}
+      />
+      <circle
+        className="wheel__center"
+        fill="grey"
+        stroke="rgb(50,50,50)"
+        cx={props.center.x}
+        cy={props.center.y}
+        r={10}
+        style={{
+          strokeWidth: "5px",
           transformBox: "fill-box",
           transformOrigin: "center center",
         }}
       />
       <WheelSliceGroup
         className="wheel__slices"
+        sliceCount={props.sliceCount}
+        wheelCenter={props.center}
+        wheelRadius={props.radius}
+      />
+      <WheelTextGroup
+        className="wheel__slices-text"
+        slices={props.slices}
         sliceCount={props.sliceCount}
         wheelCenter={props.center}
         wheelRadius={props.radius}
@@ -66,12 +103,6 @@ export const Wheel = (props: WheelProps) => (
         width={props.width}
       />
 
-      <WheelTextGroup
-        className="wheel__slices-text"
-        sliceCount={props.sliceCount}
-        wheelCenter={props.center}
-        wheelRadius={props.radius}
-      />
     </g>
   </fragment>
 );

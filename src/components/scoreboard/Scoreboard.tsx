@@ -1,25 +1,49 @@
 import _render from "packages/render";
-import { SPIN_STATUS } from "../../contants/wheel";
-import { wheelSelector } from "../../selectors/wheelSelector";
+import { calculateScoreboardIndex } from "src/selectors/calculateScoreboardIndex";
+import { isWheelSpinning, wheelSelector } from "../../selectors/wheelSelector";
 import { WheelState } from "../../store/slice";
 
 const scoreboardTransform = (state: WheelState) => {
-  // if (state.spinStatus === SPIN_STATUS.IDLE) return {};
   const { angularSpeed, angle } = wheelSelector(state);
+  const index = calculateScoreboardIndex(angle, state);
+  const value = (state.slices && state.slices[index]?.text) || index;
   return {
-    textContent:
-      angularSpeed > 0.001
-        ? `spinning ${angle} speed: ${angularSpeed}`
-        : `stopped at ${angle}`,
+    textContent: isWheelSpinning(angularSpeed)
+      ? `${value}`
+      : `You selected: ${value}`,
   };
 };
 
-const scoreboardSelector = (state: WheelState) => state 
+const scoreboardSelector = (state: WheelState) => state;
 
 export const Scoreboard = () => {
   return (
-    <section>
-       <h4 selector={scoreboardSelector} connect={scoreboardTransform} />
+    <section
+      style={{
+        position: "absolute",
+        fontFamily: "'Alfa Slab One', verdana",
+        padding: "5px 20px",
+        border: "2px solid rgb(60,60,60)",
+        width: '150px',
+        height: '80px',
+        textAlign: "center", 
+        borderRadius: "5px",
+        bottom: "10px",
+        left: "50%",
+        transform: 'translate(-50%)',
+        zIndex: "1000",
+        color: "white",
+        textShadow: [
+          "0 0 2px black",
+          "0 0 7px #bdff9f",
+          "0 0 10px #bdff9f",
+          "0 0 21px #bdff9f",
+          "0 0 36px #bdff9f",
+        ].join(", "),
+        backgroundColor: "black",        
+      }}
+    >
+      <p selector={scoreboardSelector} connect={scoreboardTransform} />
     </section>
   );
 };

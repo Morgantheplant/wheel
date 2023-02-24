@@ -1,7 +1,7 @@
 import { Body } from "matter-js";
 import { SPIN_STATUS } from "../contants/wheel";
-import { createAction } from "./createAction";
-import { createStore } from "./createStore";
+import { createAction } from "../../packages/store/createAction";
+import { createStore } from "../../packages/store/createStore";
 
 export enum ActionType {
   UPDATE_POSITION = "UPDATE_POSITION",
@@ -22,24 +22,47 @@ export const updateSpinStatus = createAction<
   SPIN_STATUS
 >(ActionType.UPDATE_SPIN_STATUS);
 
+
 export type WheelAction =
   | ReturnType<typeof updatePosition>
   | ReturnType<typeof updateSpinStatus>
   | ReturnType<typeof updateViewportSize>;
 
+export type WheelSlice = {
+  text: string,
+  color?: string;
+}
 
 export type WheelState = {
   bodies: Body[],
   height: number,
   width: number,
-  spinStatus: SPIN_STATUS
+  spinStatus: SPIN_STATUS,
+  sliceCount: number,
+  slices?: WheelSlice[]
 }
 
-const defaultState:WheelState = {
+const defaultSlices = [
+  {text: "$4000"},
+  {text: "Lose A Turn"},
+  {text: "$550"},
+  {text: "$500"},
+  {text: "$400"},
+  {text: "$600"},
+  {text: "Bankrupt"},
+  {text: "$3500"},
+  {text: "$900"},
+  {text: "$0 Free Spin"},
+  {text: "Surprise"},
+  {text: "$50"}
+]
+const defaultState: WheelState = {
     bodies: [],
     height: 700,
     width: 700,
     spinStatus: SPIN_STATUS.IDLE,
+    slices: defaultSlices,
+    sliceCount: defaultSlices.length,
 };
 
 export const wheelReducer = (state = defaultState, action?: WheelAction) => {

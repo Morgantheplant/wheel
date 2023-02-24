@@ -1,0 +1,1 @@
+export const getDecimal = (n: number) => n - Math.floor(n);

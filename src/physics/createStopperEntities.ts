@@ -13,7 +13,7 @@ export const createStopperEntities = ({
   stopperHeight: number;
   stopperWidth: number;
   stopperCollisionFilter: Matter.ICollisionFilter;
-}) => {
+}): [Matter.Body, Matter.Body, Matter.Body, Constraint] => {
   const stopper = Bodies.rectangle(
     stopperX,
     stopperY,

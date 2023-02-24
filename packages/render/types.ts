@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { createStore } from "src/store/createStore";
+import { createStore } from "packages/store/createStore";
 
 export type ElementEvents = {
   [key: string]: EventListenerOrEventListenerObject;
@@ -15,6 +15,7 @@ export type Props = {
   store?: ReturnType<typeof createStore>;
   selector?: (state: object) => any;
   connect?: (selection: any) => object;
+  ref?: (props: HTMLElement | SVGElement) => void;
 };
 
 export type Children = ReactNode[] | ReactNode

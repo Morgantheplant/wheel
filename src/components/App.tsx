@@ -3,14 +3,14 @@ import { store, updateSpinStatus, WheelState } from "../store/slice";
 import { SvgBackground } from "./SvgBackground";
 import { Wheel } from "./wheel/Wheel";
 import { Stopper } from "./stopper/Stopper";
-import { WHEEL_SLICE_COUNT } from "../settings";
 import { Stand } from "./stopper/Stand";
 import { Scoreboard } from "./scoreboard/Scoreboard";
 import { wheelSelector } from "../selectors/wheelSelector";
 import { pegsSelector } from "../selectors/pegSelector";
 import { SPIN_STATUS } from "../contants/wheel";
 import { isMobile } from "../utils/detectMobile";
-import { createStore } from "src/store/createStore";
+import { createStore } from "packages/store/createStore";
+import { Title } from "./scoreboard/Title";
 
 const wheelInititalPosition = (state: WheelState) => {
   const wheel = wheelSelector(state);
@@ -52,14 +52,16 @@ export const App = () => {
   const spinEvents = getUASpinEvents({ handleDragWheel, handleReleaseWheel });
   return (
     <main store={store as ReturnType<typeof createStore>}>
-      <h1 className="main__title">Wheel of Fortune</h1>
+      <Title>Wheel of Misfortune</Title>
       <Scoreboard />
       <div
         className="main__svg-container"
         {...spinEvents}
         style={{ position: "absolute", pointerEvents: "none" }}
       >
-        <SvgBackground height={state.height} width={state.width}>
+        <SvgBackground
+        style={{background: 'url("static/background.png")', cursor: 'grab'}}
+        height={state.height} width={state.width}>
           <Stand
             height={state.height}
             wheelCenter={center}
@@ -68,7 +70,8 @@ export const App = () => {
           <Wheel
             center={center}
             radius={radius}
-            sliceCount={WHEEL_SLICE_COUNT} // todo: move to store
+            sliceCount={state.sliceCount}
+            slices={state.slices}
             pegs={pegsSelector(state)}
             height={state.height}
             width={state.width}
@@ -76,7 +79,6 @@ export const App = () => {
           <Stopper />
         </SvgBackground>
       </div>
-      <Scoreboard />
     </main>
   );
 };

@@ -2,11 +2,13 @@ import _render, { renderToDOM } from 'packages/render';
 
 import { initPhysics } from "./physics/base";
 import { App } from "./components/App";
-import { store } from "./store/slice";
+import { store, updateViewportSize } from "./store/slice";
 
 const initApp = () => {
-    initPhysics(store);
+    store.dispatch(updateViewportSize({height: window.innerWidth, width: window.innerWidth}))
+    initPhysics(store, {debug: false});
     renderToDOM("#entry-point", <App />);
+
 }
 
 document.addEventListener("DOMContentLoaded", initApp);

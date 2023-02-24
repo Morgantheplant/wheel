@@ -7,6 +7,7 @@ export const WheelSliceGroup = (props: {sliceCount: number, className: string, w
       return (
         <WheelSlice
           index={i}
+          stroke="black"
           totalSlices={props.sliceCount}
           wheelCenter={props.wheelCenter}
           wheelRadius={props.wheelRadius}

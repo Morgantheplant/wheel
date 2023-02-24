@@ -11,6 +11,7 @@ export const Stand = (props: {
     <rect
       height={props.height}
       width={width}
+      stroke="grey"
       x={props.wheelCenter.x - width / 2}
       y={props.wheelCenter.y - props.wheelRadius - distancepastWheelTop}
       style={{

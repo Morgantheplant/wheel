@@ -19,9 +19,9 @@ export const createElement = (() => {
 
     if (props) {
       // set DOM/SVG attributes, events and textContent
-      const { store, selector, connect, ...restProps } = props
+      const { store, selector, connect, ref, ...restProps } = props
       updateElement($element, restProps)
-
+      ref && ref($element)
       //connects app/handlers to store
       const connectedStore = connectStore({
         element: $element,

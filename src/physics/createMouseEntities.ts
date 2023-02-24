@@ -1,6 +1,12 @@
 import { Engine, Mouse, MouseConstraint, Render } from "matter-js";
 
-export const createMouseEntities = ({engine, collisionFilterMask, render }: {engine: Engine, collisionFilterMask: number, render: Render }) => {
+export const createMouseEntities = ({
+  engine,
+  collisionFilterMask,
+}: {
+  engine: Engine;
+  collisionFilterMask: number;
+}): [Mouse, MouseConstraint] => {
   const mouse = Mouse.create(document.body);
   const mouseConstraint = MouseConstraint.create(engine, {
     mouse: mouse,
@@ -12,7 +18,5 @@ export const createMouseEntities = ({engine, collisionFilterMask, render }: {eng
     } as Matter.IConstraintDefinition),
   });
   mouseConstraint.collisionFilter.mask = collisionFilterMask;
-  // keep the mouse in sync with rendering
-  render.mouse = mouse;
-  return [mouse, mouseConstraint]
+  return [mouse, mouseConstraint];
 };

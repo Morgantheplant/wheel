@@ -55,8 +55,8 @@ export const WheelSlice = ({
   wheelRadius: number,
 }) => {
   const angleSize = 360 / totalSlices;
-  const startPosition = angleSize / 2; // start slices offset from Pegs
-  const startAngle = angleSize * index + startPosition;
+  const startPositionOffset = angleSize / 2; // start slices offset from Pegs
+  const startAngle = angleSize * index + startPositionOffset;
   return (
     <fragment>
       <WheelSliceGradient total={totalSlices} index={index} />
