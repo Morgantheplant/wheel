@@ -18,11 +18,16 @@ export const createElement = (() => {
       : document.createElement(component || 'div')
 
     if (props) {
-      // set DOM/SVG attributes, events and textContent
+    
       const { store, selector, connect, ref, ...restProps } = props
-      updateElement($element, restProps)
+      
+      // handle refs
       ref && ref($element)
-      //connects app/handlers to store
+
+      // intial element state (DOM/SVG attributes, events and textContent)
+      updateElement($element, restProps)
+      
+      // connects app/handlers to store for state updates 
       const connectedStore = connectStore({
         element: $element,
         elementProps: props,
@@ -37,7 +42,6 @@ export const createElement = (() => {
 
     if (children) {
       const handleChildren = (child: ReactNode) => {
-        // todo: recurse here
         if (typeof child === 'string') {
           // handle svg text element
           if (component === 'text') {

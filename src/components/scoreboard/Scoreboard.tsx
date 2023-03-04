@@ -1,7 +1,7 @@
 import _render from "packages/render";
 import { calculateScoreboardIndex } from "src/selectors/calculateScoreboardIndex";
 import { isWheelSpinning, wheelSelector } from "../../selectors/wheelSelector";
-import { WheelState } from "../../store/slice";
+import { WheelState } from "../../store/wheelSlice";
 
 const scoreboardTransform = (state: WheelState) => {
   const { angularSpeed, angle } = wheelSelector(state);

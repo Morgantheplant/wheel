@@ -1,10 +1,17 @@
 type Reducer<S extends object, A extends object> = (state: S, action?: A) => S;
 type Listener<S extends object> = (state: S) => void;
 
+export type Store <S extends object, A extends object>= {
+  dispatch: (action: A) => void;
+  getState: ()=> S,
+  subscribe: (handler: Listener<S>)=> void; 
+  unsubscribe: (listenerToRemove: Listener<S>)=> void 
+} 
+
 export const createStore = <S extends object, A extends object>(
   reducer: Reducer<S, A>,
   initialState: S
-) => {
+): Store<S, A> => {
   let state = reducer(initialState);
   let listeners: Listener<S>[] = [];
   return {

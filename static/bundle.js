@@ -208,11 +208,14 @@
                 ? document.createElementNS(svgns, component)
                 : document.createElement(component || 'div');
             if (props) {
-                // set DOM/SVG attributes, events and textContent
-                const { store, selector, connect, ref } = props, restProps = __rest(props, ["store", "selector", "connect", "ref"]);
-                updateElement($element, restProps);
+                const { store, selector, connect, ref } = props, restProps = __rest(props
+                // handle refs
+                , ["store", "selector", "connect", "ref"]);
+                // handle refs
                 ref && ref($element);
-                //connects app/handlers to store
+                // intial element state (DOM/SVG attributes, events and textContent)
+                updateElement($element, restProps);
+                // connects app/handlers to store for state updates 
                 const connectedStore = connectStore({
                     element: $element,
                     elementProps: props,
@@ -223,7 +226,6 @@
             }
             if (children) {
                 const handleChildren = (child) => {
-                    // todo: recurse here
                     if (typeof child === 'string') {
                         // handle svg text element
                         if (component === 'text') {
@@ -11014,18 +11016,6 @@
     	});
     } (matter));
 
-    var SPIN_STATUS;
-    (function (SPIN_STATUS) {
-        SPIN_STATUS["IDLE"] = "IDLE";
-        SPIN_STATUS["SPINNING"] = "SPINING";
-        SPIN_STATUS["DRAGGING"] = "DRAGGING";
-    })(SPIN_STATUS || (SPIN_STATUS = {}));
-
-    const createAction = (type) => (payload) => ({
-        type,
-        payload
-    });
-
     const createStore = (reducer, initialState) => {
         let state = reducer(initialState);
         let listeners = [];
@@ -11051,10 +11041,10 @@
         ActionType["UPDATE_POSITION"] = "UPDATE_POSITION";
         ActionType["UPDATE_VIEWPORT_SIZE"] = "UPDATE_VIEWPORT_SIZE";
         ActionType["UPDATE_SPIN_STATUS"] = "UPDATE_SPIN_STATUS";
+        ActionType["TOGGLE_SIDEBAR"] = "TOGGLE_SIDEBAR";
+        ActionType["SET_EDIT_SLICE"] = "SET_EDIT_SLICE";
     })(ActionType || (ActionType = {}));
-    const updatePosition = createAction(ActionType.UPDATE_POSITION);
-    const updateViewportSize = createAction(ActionType.UPDATE_VIEWPORT_SIZE);
-    const updateSpinStatus = createAction(ActionType.UPDATE_SPIN_STATUS);
+
     const defaultSlices = [
         { text: "$4000" },
         { text: "Lose A Turn" },
@@ -11067,17 +11057,18 @@
         { text: "$900" },
         { text: "$0 Free Spin" },
         { text: "Surprise" },
-        { text: "$50" }
-    ];
+        { text: "$50" },
+    ].map((item) => (Object.assign(Object.assign({}, item), { isEditing: false })));
     const defaultState = {
         bodies: [],
         height: 700,
         width: 700,
-        spinStatus: SPIN_STATUS.IDLE,
         slices: defaultSlices,
         sliceCount: defaultSlices.length,
+        sideBarOpen: false,
     };
     const wheelReducer = (state = defaultState, action) => {
+        var _a, _b;
         if (!action)
             return state;
         switch (action.type) {
@@ -11085,12 +11076,29 @@
                 return Object.assign(Object.assign({}, state), { bodies: action.payload });
             case ActionType.UPDATE_VIEWPORT_SIZE:
                 return Object.assign(Object.assign({}, state), { height: action.payload.height, width: action.payload.width });
-            case ActionType.UPDATE_SPIN_STATUS:
-                return Object.assign(Object.assign({}, state), { spinStatus: action.payload });
+            case ActionType.TOGGLE_SIDEBAR:
+                return Object.assign(Object.assign({}, state), { sideBarOpen: (_a = action.payload) !== null && _a !== void 0 ? _a : !state.sideBarOpen });
+            case ActionType.SET_EDIT_SLICE:
+                return Object.assign(Object.assign({}, state), { slices: ((_b = state.slices) === null || _b === void 0 ? void 0 : _b.length)
+                        ? state.slices.map((slice, index) => (Object.assign(Object.assign({}, slice), { isEditing: action.payload.index === index
+                                ? action.payload.isEditing
+                                : slice.isEditing })))
+                        : [] });
             default:
                 return state;
         }
     };
+
+    const createAction = (type) => (payload) => ({
+        type,
+        payload
+    });
+
+    const updatePosition = createAction(ActionType.UPDATE_POSITION);
+    const updateViewportSize = createAction(ActionType.UPDATE_VIEWPORT_SIZE);
+    const toggleSidebar = createAction(ActionType.TOGGLE_SIDEBAR);
+    createAction(ActionType.SET_EDIT_SLICE);
+
     const store = createStore(wheelReducer, defaultState);
 
     const WIDTH = 700; //Math.max(innerWidth, 150);
@@ -11208,12 +11216,13 @@
         return [mouse, mouseConstraint];
     };
 
-    const createDebugger = ({ engine, mouse, screenHeight, screenWidth, }) => {
+    const createDebugger = ({ engine, mouse, screenHeight, screenWidth, store, }) => {
         // print bodies to console on keydown
         window.addEventListener("keydown", () => {
             const bodies = matterExports.Composite.allBodies(engine.world);
             console.log(bodies[0]);
         });
+        window.store = store;
         const entry = document.querySelector("#entry-point");
         const button = document.createElement("button");
         button.innerText = "Debug: Hide SVG";
@@ -11242,7 +11251,7 @@
         matterExports.Render.run(render);
     };
 
-    const initPhysics = (store, options) => {
+    const initEntities = (store, options) => {
         const engine = matterExports.Engine.create();
         const { height, width } = store.getState();
         const screenWidth = width;
@@ -11296,6 +11305,7 @@
                 mouse: mouseEntities[0],
                 screenHeight,
                 screenWidth,
+                store,
             });
         }
         // dispatch DOM updates
@@ -11311,6 +11321,25 @@
         matterExports.Runner.run(runner, engine);
         // update DOM on each tick
         matterExports.Events.on(runner, "afterTick", updateDOM);
+        return {
+            engine,
+            runner,
+        };
+    };
+    const initPhysics = (store, options) => {
+        let AppContext = { engine: null, runner: null };
+        return {
+            reset: () => {
+                if (!AppContext.engine || !AppContext.runner)
+                    return;
+                matterExports.Engine.clear(AppContext.engine);
+                matterExports.Runner.stop(AppContext.runner);
+                AppContext = initEntities(store, options);
+            },
+            start: () => {
+                AppContext = initEntities(store, options);
+            },
+        };
     };
 
     const SvgBackground = (props) => {
@@ -11614,9 +11643,6 @@
 
     const pegsSelector = ({ bodies }) => bodies.filter(body => body.label.startsWith(PEG));
 
-    const mobileRegExs = /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i;
-    const isMobile = () => !!navigator.userAgent.match(mobileRegExs);
-
     const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
     const setScale = (element, scale) => setStyles(element, {
@@ -11658,6 +11684,74 @@
         }));
     };
 
+    const SideBarFade = (props) => {
+        return (_render.createElement("div", { style: {
+                position: "absolute",
+                top: "0p",
+                right: "0",
+                bottom: "0",
+                left: '0',
+                transition: "opacity .3s ease-out",
+            }, selector: (state) => state.sideBarOpen, connect: (sideBarOpen) => ({
+                style: {
+                    opacity: sideBarOpen ? 0.8 : 0,
+                },
+            }), onClick: () => {
+                props.dispatch(toggleSidebar(false));
+            } }));
+    };
+
+    const SideBarTrigger = (props) => {
+        return (_render.createElement("button", { style: {
+                position: "absolute",
+                top: "20px",
+                right: "20px",
+                transition: "transform .5s ease-out",
+            }, selector: (state) => state.sideBarOpen, connect: (sideBarOpen) => ({
+                style: {
+                    transform: `translateY(${sideBarOpen ? "-40px" : '0'})`,
+                },
+            }), onClick: () => {
+                props.dispatch(toggleSidebar(true));
+            } }, "Show Settings"));
+    };
+
+    const SliceSettings = ({ index, slice, }) => {
+        return (_render.createElement("div", null,
+            _render.createElement("label", null,
+                _render.createElement("span", null, `Slice ${index} Value:`),
+                _render.createElement("input", { value: slice.text, name: `slice-${index}` })),
+            _render.createElement("label", null,
+                _render.createElement("span", null, `Slice ${index} Value:`),
+                _render.createElement("input", { value: slice.color, name: `slice-${index}` }))));
+    };
+
+    const SideBar = (props) => {
+        var _a;
+        return (_render.createElement("fragment", null,
+            _render.createElement(SideBarFade, Object.assign({}, props)),
+            _render.createElement("div", { style: {
+                    position: "absolute",
+                    width: "40%",
+                    bottom: '0',
+                    background: "grey",
+                    right: '0',
+                    top: '0',
+                    transition: 'transform 1s ease-in',
+                }, selector: (state) => state.sideBarOpen, connect: (sideBarOpen) => ({
+                    style: {
+                        transform: `translateX(${sideBarOpen ? 0 : "100%"})`,
+                    },
+                }) },
+                _render.createElement("button", { onClick: () => {
+                        props.dispatch(toggleSidebar(false));
+                    } }, "X"),
+                _render.createElement("form", null, (_a = props.state.slices) === null || _a === void 0 ? void 0 : _a.map((slice, index) => {
+                    return _render.createElement(SliceSettings, { slice: slice, index: index });
+                }))),
+            _render.createElement(SideBarTrigger, Object.assign({}, props))));
+    };
+
     const wheelInititalPosition = (state) => {
         const wheel = wheelSelector(state);
         return {
@@ -11668,40 +11762,79 @@
             radius: wheel.plugin.initialRadius,
         };
     };
-    const getUASpinEvents = ({ handleDragWheel, handleReleaseWheel, }) => {
-        // sniff user agent to attach mobile vs desktop events
-        const isMobileDevice = isMobile();
-        const startEvent = isMobileDevice ? "onTouchStart" : "onMouseDown";
-        const endEvent = isMobileDevice ? "onTouchEnd" : "onMouseUp";
-        return {
-            [startEvent]: handleDragWheel,
-            [endEvent]: handleReleaseWheel,
-        };
-    };
-    const App = () => {
+    // const getUASpinEvents = ({
+    //   handleDragWheel,
+    //   handleReleaseWheel,
+    // }: {
+    //   handleDragWheel: () => void;
+    //   handleReleaseWheel: () => void;
+    // }) => {
+    //   // sniff user agent to attach mobile vs desktop events
+    //   const isMobileDevice = isMobile();
+    //   const startEvent = isMobileDevice ? "onTouchStart" : "onMouseDown";
+    //   const endEvent = isMobileDevice ? "onTouchEnd" : "onMouseUp";
+    //   return {
+    //     [startEvent]: handleDragWheel,
+    //     [endEvent]: handleReleaseWheel,
+    //   };
+    // };
+    const App = (props) => {
         const state = store.getState();
         const { center, radius } = wheelInititalPosition(state);
-        const handleDragWheel = () => {
-            store.dispatch(updateSpinStatus(SPIN_STATUS.DRAGGING));
-        };
-        const handleReleaseWheel = () => {
-            store.dispatch(updateSpinStatus(SPIN_STATUS.SPINNING));
-        };
-        const spinEvents = getUASpinEvents({ handleDragWheel, handleReleaseWheel });
         return (_render.createElement("main", { store: store },
             _render.createElement(Title, null, "Wheel of Misfortune"),
             _render.createElement(Scoreboard, null),
-            _render.createElement("div", Object.assign({ className: "main__svg-container" }, spinEvents, { style: { position: "absolute", pointerEvents: "none" } }),
-                _render.createElement(SvgBackground, { style: { background: 'url("static/background.png")', cursor: 'grab' }, height: state.height, width: state.width },
+            _render.createElement("div", { className: "main__svg-container", style: { position: "absolute" } },
+                _render.createElement(SvgBackground, { style: { background: 'url("static/background.png")', cursor: "grab" }, height: state.height, width: state.width },
                     _render.createElement(Stand, { height: state.height, wheelCenter: center, wheelRadius: radius }),
                     _render.createElement(Wheel, { center: center, radius: radius, sliceCount: state.sliceCount, slices: state.slices, pegs: pegsSelector(state), height: state.height, width: state.width }),
-                    _render.createElement(Stopper, null)))));
+                    _render.createElement(Stopper, null))),
+            _render.createElement(SideBar, { reset: props.reset, state: state, dispatch: store.dispatch })));
     };
 
+    const debounce = (cb, wait = 20) => {
+        let h = 0;
+        let callable = (...args) => {
+            clearTimeout(h);
+            h = setTimeout(() => cb(...args), wait);
+        };
+        return callable;
+    };
+
+    const initDOM = (options) => {
+        let DOMContext = options;
+        const reset = () => {
+            var _a, _b;
+            options.onBeforeReset();
+            (_b = (_a = DOMContext.entry) === null || _a === void 0 ? void 0 : _a.firstChild) === null || _b === void 0 ? void 0 : _b.remove();
+            DOMContext.entry = renderToDOM(DOMContext.selector, _render.createElement(App, { reset: reset }));
+        };
+        return {
+            start: () => {
+                options.onBeforeStart();
+                DOMContext.entry = renderToDOM(DOMContext.selector, _render.createElement(App, { reset: reset }));
+            },
+            reset,
+        };
+    };
     const initApp = () => {
+        // update store with inital viewport size
         store.dispatch(updateViewportSize({ height: window.innerWidth, width: window.innerWidth }));
-        initPhysics(store, { debug: false });
-        renderToDOM("#entry-point", _render.createElement(App, null));
+        const physicsEntry = initPhysics(store, { debug: false });
+        const domEntry = initDOM({
+            onBeforeStart: () => physicsEntry.start(),
+            onBeforeReset: () => physicsEntry.reset(),
+            selector: "#entry-point",
+        });
+        domEntry.start();
+        // add window resize events
+        window.addEventListener("resize", debounce(() => {
+            store.dispatch(updateViewportSize({
+                height: window.innerWidth,
+                width: window.innerWidth,
+            }));
+            domEntry.reset();
+        }, 1000));
     };
     document.addEventListener("DOMContentLoaded", initApp);
 

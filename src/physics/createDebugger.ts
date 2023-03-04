@@ -1,21 +1,26 @@
 import { Composite, Engine, Mouse, Render } from "matter-js";
+import { WheelStore } from "src/store/wheelSlice";
 
 export const createDebugger = ({
   engine,
   mouse,
   screenHeight,
   screenWidth,
+  store,
 }: {
   engine: Engine;
   mouse: Mouse;
   screenHeight: number;
   screenWidth: number;
+  store: WheelStore;
 }) => {
   // print bodies to console on keydown
   window.addEventListener("keydown", () => {
     const bodies = Composite.allBodies(engine.world);
     console.log(bodies[0]);
   });
+
+  (window as any).store = store;
 
   const entry = document.querySelector("#entry-point");
   const button = document.createElement("button");

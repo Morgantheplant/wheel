@@ -5,7 +5,7 @@ import { WheelShadow } from "./WheelShadow";
 import { PegGroup } from "./PegGroup";
 import { WheelSliceGroup } from "./WheelSliceGroup";
 import { WheelTextGroup } from "./WheelTextGroup";
-import { WheelSlice } from "src/store/slice";
+import { WheelSlice } from "src/store/wheelSlice";
 
 const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
 

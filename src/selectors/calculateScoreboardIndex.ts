@@ -1,5 +1,5 @@
 import { STOPPER } from "src/contants/bodies";
-import { WheelState } from "src/store/slice";
+import { WheelState } from "src/store/wheelSlice";
 import { radianRotationsToDegrees } from "src/utils/radianRotationsToDegrees";
 import { findBodyById } from "./findBodyById";
 

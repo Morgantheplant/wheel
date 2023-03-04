@@ -1,5 +1,5 @@
 import _render from "packages/render";
-import { WheelSlice } from "src/store/slice";
+import { WheelSlice } from "src/store/wheelSlice";
 import { WheelText } from "./WheelText";
 
 export const WheelTextGroup = (props: {

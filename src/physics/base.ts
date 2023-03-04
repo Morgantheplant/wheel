@@ -1,21 +1,14 @@
-import {
-  Engine,
-  Runner,
-  Composite,
-  Body,
-  Events,
-} from "matter-js";
-import { updatePosition, WheelState, WheelAction } from "../store/slice";
-import {  PEG_COUNT, WHEEL_RADIUS } from "../settings";
+import { Engine, Runner, Composite, Body, Events } from "matter-js";
+import { updatePosition, WheelStore } from "../store/wheelSlice";
+import { PEG_COUNT, WHEEL_RADIUS } from "../settings";
 import { createStopperEntities } from "./createStopperEntities";
 import { createWheelEntities } from "./createWheelEntities";
 import { createPegEntities } from "./createPegEntities";
 import { createMouseEntities } from "./createMouseEntities";
-import { createStore } from "../../packages/store/createStore";
 import { createDebugger } from "./createDebugger";
 
-export const initPhysics = <S extends object, A extends object>(
-  store: ReturnType<typeof createStore<WheelState, WheelAction>>,
+export const initEntities = (
+  store: WheelStore,
   options?: { debug: boolean }
 ) => {
   const engine = Engine.create();
@@ -81,6 +74,7 @@ export const initPhysics = <S extends object, A extends object>(
       mouse: mouseEntities[0],
       screenHeight,
       screenWidth,
+      store,
     });
   }
 
@@ -101,4 +95,31 @@ export const initPhysics = <S extends object, A extends object>(
 
   // update DOM on each tick
   Events.on(runner, "afterTick", updateDOM);
+  return {
+    engine,
+    runner,
+  };
+};
+
+type AppContext = {
+  engine: Matter.Engine | null;
+  runner: Matter.Runner | null;
+};
+
+export const initPhysics = (
+  store: WheelStore,
+  options?: { debug: boolean }
+) => {
+  let AppContext: AppContext = { engine: null, runner: null };
+  return {
+    reset: () => {
+      if (!AppContext.engine || !AppContext.runner) return;
+      Engine.clear(AppContext.engine);
+      Runner.stop(AppContext.runner);
+      AppContext = initEntities(store, options);
+    },
+    start: () => {
+      AppContext = initEntities(store, options);
+    },
+  };
 };

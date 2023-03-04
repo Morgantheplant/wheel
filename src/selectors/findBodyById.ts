@@ -1,4 +1,4 @@
-import { WheelState } from "../store/slice";
+import { WheelState } from "../store/wheelSlice";
 
 export const findBodyById = (() => {
   // cache indexes since they are stable
