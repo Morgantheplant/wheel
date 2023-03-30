@@ -30,6 +30,7 @@ export const Stopper = () => {
   return (
     <fragment>
       <polygon
+        className="stand__stopper"
         connect={stopperTransform}
         fill="orange"
         filter="drop-shadow(1px 1px 1px rgb(0 0 0))"

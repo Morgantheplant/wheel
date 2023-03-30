@@ -21,7 +21,7 @@ const introAnimation = async (element: HTMLElement | null, index: number) => {
 export const Title = ({ children }: { children: string }) => {
   return (
     <h1
-      className="main__title"
+      className="title__base"
       style={{
         color: "white",
         fontFamily: "Passion One, verdana, sans-serif",

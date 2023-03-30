@@ -19,6 +19,7 @@ const scoreboardSelector = (state: WheelState) => state;
 export const Scoreboard = () => {
   return (
     <section
+      className="stand__scoreboard"
       style={{
         backgroundColor: "black",
         border: "2px solid rgb(60,60,60)",

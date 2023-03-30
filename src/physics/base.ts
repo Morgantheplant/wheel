@@ -1,11 +1,26 @@
 import { Engine, Runner, Composite, Body, Events } from "matter-js";
 import { updatePosition, WheelStore } from "../store/wheelSlice";
-import { PEG_COUNT, WHEEL_RADIUS } from "../settings";
 import { createStopperEntities } from "./createStopperEntities";
 import { createWheelEntities } from "./createWheelEntities";
 import { createPegEntities } from "./createPegEntities";
 import { createMouseEntities } from "./createMouseEntities";
 import { createDebugger } from "./createDebugger";
+
+const PEG_COUNT = 24;
+const MAX_WHEEL_SIZE = 1000;
+const MIN_WHEEL_SIZE = 250
+
+const calculateWheelRadius = ({
+  screenHeight,
+  screenWidth,
+  max = MAX_WHEEL_SIZE,
+  min = MIN_WHEEL_SIZE,
+}: {
+  screenHeight: number;
+  screenWidth: number;
+  max?: number;
+  min?: number;
+}) => Math.min(Math.max(Math.min(screenWidth / 3, screenHeight / 3), min), max);
 
 export const initEntities = (
   store: WheelStore,
@@ -25,11 +40,11 @@ export const initEntities = (
 
   const wheelCenterX = screenWidth / 2;
   const stopperY = 90;
-
+  const wheelRadius = calculateWheelRadius({ screenHeight, screenWidth });
   const wheelEntities = createWheelEntities({
     wheelCenterX: screenWidth / 2,
-    wheelCenterY: WHEEL_RADIUS + stopperY + 10,
-    wheelRadius: WHEEL_RADIUS,
+    wheelCenterY: wheelRadius + stopperY + 10,
+    wheelRadius: wheelRadius,
     collisionFilter: {
       group: wheelGroup,
       category: wheelMouse,
@@ -49,7 +64,7 @@ export const initEntities = (
 
   const pegEntities = createPegEntities({
     pegCount: PEG_COUNT,
-    wheelRadius: WHEEL_RADIUS,
+    wheelRadius,
     offset: 10,
     collisionFilterMask: pegStopperCategory,
     wheel: wheelEntities[0],

@@ -11103,10 +11103,6 @@
 
     const store = createStore(wheelReducer, defaultState);
 
-    const WIDTH = 700; //Math.max(innerWidth, 150);
-    const WHEEL_RADIUS = WIDTH / 3;
-    const PEG_COUNT = 24;
-
     const PEG = "PEG";
     const STOPPER = "STOPPER";
     const STOPPER_LEFT = "STOPPER_LEFT";
@@ -11254,6 +11250,10 @@
         matterExports.Render.run(render);
     };
 
+    const PEG_COUNT = 24;
+    const MAX_WHEEL_SIZE = 1000;
+    const MIN_WHEEL_SIZE = 250;
+    const calculateWheelRadius = ({ screenHeight, screenWidth, max = MAX_WHEEL_SIZE, min = MIN_WHEEL_SIZE, }) => Math.min(Math.max(Math.min(screenWidth / 3, screenHeight / 3), min), max);
     const initEntities = (store, options) => {
         const engine = matterExports.Engine.create();
         const { height, width } = store.getState();
@@ -11267,10 +11267,11 @@
         const wheelMouse = 0x0002;
         const wheelCenterX = screenWidth / 2;
         const stopperY = 90;
+        const wheelRadius = calculateWheelRadius({ screenHeight, screenWidth });
         const wheelEntities = createWheelEntities({
             wheelCenterX: screenWidth / 2,
-            wheelCenterY: WHEEL_RADIUS + stopperY + 10,
-            wheelRadius: WHEEL_RADIUS,
+            wheelCenterY: wheelRadius + stopperY + 10,
+            wheelRadius: wheelRadius,
             collisionFilter: {
                 group: wheelGroup,
                 category: wheelMouse,
@@ -11288,7 +11289,7 @@
         });
         const pegEntities = createPegEntities({
             pegCount: PEG_COUNT,
-            wheelRadius: WHEEL_RADIUS,
+            wheelRadius,
             offset: 10,
             collisionFilterMask: pegStopperCategory,
             wheel: wheelEntities[0],
@@ -11527,7 +11528,7 @@
     });
     const Stopper = () => {
         return (_render.createElement("fragment", null,
-            _render.createElement("polygon", { connect: stopperTransform, fill: "orange", filter: "drop-shadow(1px 1px 1px rgb(0 0 0))", selector: stopperSelector, stroke: "orange", style: {
+            _render.createElement("polygon", { className: "stand__stopper", connect: stopperTransform, fill: "orange", filter: "drop-shadow(1px 1px 1px rgb(0 0 0))", selector: stopperSelector, stroke: "orange", style: {
                     strokeLinejoin: "round",
                     strokeWidth: "3px",
                     transformBox: "fill-box",
@@ -11538,7 +11539,7 @@
     const Stand = (props) => {
         const distancepastWheelTop = 40;
         const width = 50;
-        return (_render.createElement("rect", { height: props.height, width: width, stroke: "grey", x: props.wheelCenter.x - width / 2, y: props.wheelCenter.y - props.wheelRadius - distancepastWheelTop, style: {
+        return (_render.createElement("rect", { className: "stand__base", height: props.height, width: width, stroke: "grey", x: props.wheelCenter.x - width / 2, y: props.wheelCenter.y - props.wheelRadius - distancepastWheelTop, style: {
                 strokeWidth: 1,
                 transformBox: "fill-box",
                 transformOrigin: "center center",
@@ -11598,7 +11599,7 @@
     };
     const scoreboardSelector = (state) => state;
     const Scoreboard = () => {
-        return (_render.createElement("section", { style: {
+        return (_render.createElement("section", { className: "stand__scoreboard", style: {
                 backgroundColor: "black",
                 border: "2px solid rgb(60,60,60)",
                 borderRadius: "5px",
@@ -11642,7 +11643,7 @@
         setScale(element, TITLE_DEFAULT_SCALE);
     });
     const Title = ({ children }) => {
-        return (_render.createElement("h1", { className: "main__title", style: {
+        return (_render.createElement("h1", { className: "title__base", style: {
                 color: "white",
                 fontFamily: "Passion One, verdana, sans-serif",
                 position: "absolute",
@@ -11750,7 +11751,7 @@
 
     const SliceSettings = ({ index, onChange, slice, total, }) => {
         const { color1 } = getWheelColors({ index, total });
-        return (_render.createElement("div", { style: { display: "flex" } },
+        return (_render.createElement("div", { className: "sidebar__settings", style: { display: "flex" } },
             _render.createElement(SliceSettingsInput, { backgroundColor: slice.color || color1, label: `Slice ${index + 1} Text:`, name: `slice-${index}-text`, onChange: onChange, value: slice.text })));
     };
 

@@ -9,6 +9,7 @@ export const Stand = (props: {
   const width = 50;
   return (
     <rect
+      className="stand__base"
       height={props.height}
       width={width}
       stroke="grey"

@@ -10,13 +10,13 @@ export const SliceSettings = ({
   total,
 }: {
   index: number;
-  onChange: (value: {text:string, color?: string, hidden?:boolean}) => void;
+  onChange: (value: { text: string; color?: string; hidden?: boolean }) => void;
   slice: WheelSlice;
   total: number;
 }) => {
-  const {color1} = getWheelColors({index, total})
+  const { color1 } = getWheelColors({ index, total });
   return (
-    <div style={{ display: "flex" }}>
+    <div className="sidebar__settings" style={{ display: "flex" }}>
       <SliceSettingsInput
         backgroundColor={slice.color || color1}
         label={`Slice ${index + 1} Text:`}
