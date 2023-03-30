@@ -2,7 +2,7 @@
 
 A physics based spinning carinval wheel built using JSX without React.
 
-https://morgantheplant.github.io/wheel/
+[SEE IT LIVE HERE](https://morgantheplant.github.io/wheel/)
 
 ![Wheel of Misforture](./screenshot.png)
 
