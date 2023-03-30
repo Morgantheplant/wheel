@@ -1,11 +1,26 @@
 import _render from "packages/render";
 
 export const getGradientId = (index: number) => `slice-gradient-${index}`;
-
-export const WheelSliceGradient = ({ index, total }: { index:number, total:number }) => {
+export const getWheelColors = ({
+  index,
+  total,
+}: {
+  index: number;
+  total: number;
+}) => {
   const value = Math.floor((index * 360) / total);
   const color1 = `hsl(${value}, 100%, 50%)`;
   const color2 = `hsl(${value + 10}, 90%, 45%)`;
+  return { color1, color2 };
+};
+export const WheelSliceGradient = ({
+  index,
+  total,
+}: {
+  index: number;
+  total: number;
+}) => {
+  const { color1, color2 } = getWheelColors({ index, total });
   return (
     <defs>
       <linearGradient id={getGradientId(index)}>

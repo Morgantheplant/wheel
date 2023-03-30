@@ -25,7 +25,7 @@ type WheelProps = {
   slices?: WheelSlice[];
   sliceCount: number;
   pegs: Matter.Body[];
-}
+};
 
 export const Wheel = (props: WheelProps) => (
   <fragment>
@@ -41,51 +41,45 @@ export const Wheel = (props: WheelProps) => (
       style={{
         transformBox: "fill-box",
         transformOrigin: "center center",
-        cursor: "grab"
+        cursor: "grab",
       }}
     >
       <circle
         className="wheel__background"
-        fill="rgb(147 198 147)"
+        fill="rgba(196, 228, 245, 0.5)"
         stroke="black"
         cx={props.center.x}
         cy={props.center.y}
         r={props.radius}
-        style={{
-          strokeWidth: '5px',
-          transformBox: "fill-box",
-          transformOrigin: "center center",
-        }}
-      />
-      <circle
-        className="wheel__background"
-        fill="rgb(147 198 147)"
-        stroke="black"
-        cx={props.center.x}
-        cy={props.center.y}
-        r={50}
-        style={{
-          strokeWidth: '5px',
-          transformBox: "fill-box",
-          transformOrigin: "center center",
-        }}
-      />
-      <circle
-        className="wheel__center"
-        fill="grey"
-        stroke="rgb(50,50,50)"
-        cx={props.center.x}
-        cy={props.center.y}
-        r={10}
         style={{
           strokeWidth: "5px",
           transformBox: "fill-box",
           transformOrigin: "center center",
         }}
       />
+      <image
+        x={props.center.x - 50}
+        y={props.center.y - 50}
+        href="static/spiral.png"
+        height="100px"
+        width="100px"
+      />
+      <circle
+        className="wheel__center"
+        fill="grey"
+        stroke="black"
+        cx={props.center.x}
+        cy={props.center.y}
+        r={5}
+        style={{
+          strokeWidth: "2px",
+          transformBox: "fill-box",
+          transformOrigin: "center center",
+        }}
+      />
       <WheelSliceGroup
         className="wheel__slices"
-        sliceCount={props.sliceCount}
+        slices={props.slices || []}
         wheelCenter={props.center}
         wheelRadius={props.radius}
       />
@@ -102,7 +96,6 @@ export const Wheel = (props: WheelProps) => (
         wheelRadius={props.radius}
         width={props.width}
       />
-
     </g>
   </fragment>
 );

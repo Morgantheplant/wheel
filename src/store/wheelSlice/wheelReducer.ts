@@ -4,7 +4,7 @@ import { WheelAction } from "./wheelActions";
 export type WheelSlice = {
   text: string;
   color?: string;
-  isEditing: boolean;
+  hidden?: boolean;
 };
 
 export type WheelState = {
@@ -56,17 +56,14 @@ export const wheelReducer = (state = defaultState, action?: WheelAction) => {
         ...state,
         sideBarOpen: action.payload ?? !state.sideBarOpen,
       };
-    case ActionType.SET_EDIT_SLICE:
+    case ActionType.UPDATE_WHEEL_SLICE:
       return {
         ...state,
         slices: state.slices?.length
-          ? state.slices.map((slice, index) => ({
-              ...slice,
-              isEditing:
-                action.payload.index === index
-                  ? action.payload.isEditing
-                  : slice.isEditing,
-            }))
+          ? state.slices.map((slice, i) => {
+              const { index, ...rest } = action.payload;
+              return i !== index ? slice : { ...slice, ...rest };
+            })
           : [],
       };
     default:

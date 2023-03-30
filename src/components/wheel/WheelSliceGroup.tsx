@@ -1,14 +1,16 @@
 import _render from "packages/render";
-import { WheelSlice } from "./WheelSlice";
+import { WheelSlice } from "src/store/wheelSlice";
+import { WheelSlice as WheelSliceComponent } from "./WheelSlice";
 
-export const WheelSliceGroup = (props: {sliceCount: number, className: string, wheelCenter: {x: number, y: number}, wheelRadius: number}) => (
+export const WheelSliceGroup = (props: {slices: WheelSlice[], className: string, wheelCenter: {x: number, y: number}, wheelRadius: number}) => (
   <g className={props.className}>
-    {Array.from({ length: props.sliceCount }).map((_, i) => {
+    {props.slices.map((_, i) => {
       return (
-        <WheelSlice
+        <WheelSliceComponent
           index={i}
           stroke="black"
-          totalSlices={props.sliceCount}
+          data={_}
+          totalSlices={props.slices.length}
           wheelCenter={props.wheelCenter}
           wheelRadius={props.wheelRadius}
         />

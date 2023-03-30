@@ -25,7 +25,7 @@ export const createDebugger = ({
   const entry = document.querySelector("#entry-point");
   const button = document.createElement("button");
   button.innerText = "Debug: Hide SVG";
-  button.setAttribute("style", "position: absolute; top: 10px; right: 10px;");
+  button.setAttribute("style", "position: absolute; bottom: 10px; right: 10px;");
   let hidden = false;
   button.addEventListener("click", () => {
     hidden = !hidden;
@@ -33,6 +33,7 @@ export const createDebugger = ({
     button.innerText = hidden ? "Debug: Show SVG" : "Debug: Hide SVG";
   });
   document.body.appendChild(button);
+  button.click()
 
   // create a renderer
   const render = Render.create({

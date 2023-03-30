@@ -1,17 +1,7 @@
 import { STOPPER } from "src/contants/bodies";
 import { WheelState } from "src/store/wheelSlice";
-import { radianRotationsToDegrees } from "src/utils/radianRotationsToDegrees";
 import { findBodyById } from "./findBodyById";
 
-const getAngleWithOffset = (angle: number, offset: number) => {
-  const angleWithOffset = radianRotationsToDegrees(angle) - offset;
-  // translate to value between 0 and 360
-  return angleWithOffset > 360
-    ? 360 - angleWithOffset
-    : angleWithOffset < 0
-    ? 360 + angleWithOffset
-    : angleWithOffset;
-};
 
 // translate indices at start and end of circle
 const circularIndexResolver = (total: number) => (index: number) => {
@@ -25,39 +15,31 @@ const circularIndexResolver = (total: number) => (index: number) => {
   }
 };
 
-const calculatePosition = (angle: number, count: number) => {
-  const angleSize = 360 / count;
-  const startPositionOffset = angleSize / 2;
-  return getAngleWithOffset(angle, startPositionOffset) / angleSize;
-};
 
-const findIndexFromPosition = (
-  position: number
-): { index: number; shouldCheckStopper: boolean } => {
-  const index = 12 - Math.ceil(position);
-  const difference = 12 - position - index;
-  const shouldCheckStopper = difference > 0.85 || difference < 0.2;
-  return {
-    index,
-    shouldCheckStopper,
-  };
-};
-
+const radiansToDegrees = (angle:number) => angle * (180/Math.PI);
+const degreesToAbsoluteAngle = (angle:number) => ((angle % 360) + 360) % 360;
+const isOutsideOfThreshold = (threshold: number) =>   threshold > 0.85 || threshold < 0.2;
 
 export const calculateScoreboardIndex = (angle: number, state: WheelState): number => {
-  const currentPosition = calculatePosition(angle, state.sliceCount);
-  const { index, shouldCheckStopper } = findIndexFromPosition(currentPosition);
+  const angleSize = 360 /  state.sliceCount;
+  const startPositionOffset = angleSize / 2;
+  const angleInDegrees = degreesToAbsoluteAngle(radiansToDegrees(angle) + startPositionOffset)
+  const rawIndex = Math.floor(angleInDegrees / angleSize)
+  const index = rawIndex > 0 ? state.sliceCount - rawIndex : 0
+  const threshold = (angleInDegrees / angleSize)  - rawIndex
+  const shouldCheckStopper = isOutsideOfThreshold(threshold)
   const getIndexFromCircle = circularIndexResolver(state.sliceCount);
   if (shouldCheckStopper) {
     const stopper = findBodyById(STOPPER)(state);
     const stopperIsRight = stopper.angle < -0.01;
     if (stopperIsRight) {
-      return getIndexFromCircle(index - 1);
+      return getIndexFromCircle(index + 1);
     }
     const stopperIsLeft = stopper.angle > 0.02;
     if (stopperIsLeft) {
-      return getIndexFromCircle(index + 1);
+      return getIndexFromCircle(index - 1);
     }
   }
-  return getIndexFromCircle(index);
+  return index
+
 };

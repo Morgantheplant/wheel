@@ -79,13 +79,13 @@ export const initEntities = (
   }
 
   // dispatch DOM updates
-  const updateDOM = () => {
+  const updateBodies = () => {
     const bodies = Composite.allBodies(engine.world);
     store.dispatch(updatePosition(bodies));
   };
 
   // update initial state
-  updateDOM();
+  updateBodies();
 
   // create runner
   const runner = Runner.create();
@@ -94,7 +94,7 @@ export const initEntities = (
   Runner.run(runner, engine);
 
   // update DOM on each tick
-  Events.on(runner, "afterTick", updateDOM);
+  Events.on(runner, "afterTick", updateBodies);
   return {
     engine,
     runner,

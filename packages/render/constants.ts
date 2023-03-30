@@ -15,4 +15,5 @@ export const svgElements = new Set([
   "text",
   "filter",
   "feGaussianBlur",
+  "image"
 ]);

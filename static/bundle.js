@@ -192,6 +192,7 @@
         "text",
         "filter",
         "feGaussianBlur",
+        "image"
     ]);
 
     const createElement = (() => {
@@ -11042,7 +11043,7 @@
         ActionType["UPDATE_VIEWPORT_SIZE"] = "UPDATE_VIEWPORT_SIZE";
         ActionType["UPDATE_SPIN_STATUS"] = "UPDATE_SPIN_STATUS";
         ActionType["TOGGLE_SIDEBAR"] = "TOGGLE_SIDEBAR";
-        ActionType["SET_EDIT_SLICE"] = "SET_EDIT_SLICE";
+        ActionType["UPDATE_WHEEL_SLICE"] = "UPDATE_WHEEL_SLICE";
     })(ActionType || (ActionType = {}));
 
     const defaultSlices = [
@@ -11078,11 +11079,12 @@
                 return Object.assign(Object.assign({}, state), { height: action.payload.height, width: action.payload.width });
             case ActionType.TOGGLE_SIDEBAR:
                 return Object.assign(Object.assign({}, state), { sideBarOpen: (_a = action.payload) !== null && _a !== void 0 ? _a : !state.sideBarOpen });
-            case ActionType.SET_EDIT_SLICE:
+            case ActionType.UPDATE_WHEEL_SLICE:
                 return Object.assign(Object.assign({}, state), { slices: ((_b = state.slices) === null || _b === void 0 ? void 0 : _b.length)
-                        ? state.slices.map((slice, index) => (Object.assign(Object.assign({}, slice), { isEditing: action.payload.index === index
-                                ? action.payload.isEditing
-                                : slice.isEditing })))
+                        ? state.slices.map((slice, i) => {
+                            const _a = action.payload, { index } = _a, rest = __rest(_a, ["index"]);
+                            return i !== index ? slice : Object.assign(Object.assign({}, slice), rest);
+                        })
                         : [] });
             default:
                 return state;
@@ -11097,7 +11099,7 @@
     const updatePosition = createAction(ActionType.UPDATE_POSITION);
     const updateViewportSize = createAction(ActionType.UPDATE_VIEWPORT_SIZE);
     const toggleSidebar = createAction(ActionType.TOGGLE_SIDEBAR);
-    createAction(ActionType.SET_EDIT_SLICE);
+    const updateWheelSlice = createAction(ActionType.UPDATE_WHEEL_SLICE);
 
     const store = createStore(wheelReducer, defaultState);
 
@@ -11226,7 +11228,7 @@
         const entry = document.querySelector("#entry-point");
         const button = document.createElement("button");
         button.innerText = "Debug: Hide SVG";
-        button.setAttribute("style", "position: absolute; top: 10px; right: 10px;");
+        button.setAttribute("style", "position: absolute; bottom: 10px; right: 10px;");
         let hidden = false;
         button.addEventListener("click", () => {
             hidden = !hidden;
@@ -11234,6 +11236,7 @@
             button.innerText = hidden ? "Debug: Show SVG" : "Debug: Hide SVG";
         });
         document.body.appendChild(button);
+        button.click();
         // create a renderer
         const render = matterExports.Render.create({
             element: document.body,
@@ -11309,18 +11312,18 @@
             });
         }
         // dispatch DOM updates
-        const updateDOM = () => {
+        const updateBodies = () => {
             const bodies = matterExports.Composite.allBodies(engine.world);
             store.dispatch(updatePosition(bodies));
         };
         // update initial state
-        updateDOM();
+        updateBodies();
         // create runner
         const runner = matterExports.Runner.create();
         // run the engine
         matterExports.Runner.run(runner, engine);
         // update DOM on each tick
-        matterExports.Events.on(runner, "afterTick", updateDOM);
+        matterExports.Events.on(runner, "afterTick", updateBodies);
         return {
             engine,
             runner,
@@ -11342,8 +11345,9 @@
         };
     };
 
-    const SvgBackground = (props) => {
-        return _render.createElement("svg", { style: props.style, version: "1.1", width: props.width, height: props.height }, props.children);
+    const SvgBackground = (_a) => {
+        var { children } = _a, rest = __rest(_a, ["children"]);
+        return (_render.createElement("svg", Object.assign({ version: "1.1" }, rest), children));
     };
 
     const findBodyById = (() => {
@@ -11381,10 +11385,14 @@
     };
 
     const getGradientId = (index) => `slice-gradient-${index}`;
-    const WheelSliceGradient = ({ index, total }) => {
+    const getWheelColors = ({ index, total, }) => {
         const value = Math.floor((index * 360) / total);
         const color1 = `hsl(${value}, 100%, 50%)`;
         const color2 = `hsl(${value + 10}, 90%, 45%)`;
+        return { color1, color2 };
+    };
+    const WheelSliceGradient = ({ index, total, }) => {
+        const { color1, color2 } = getWheelColors({ index, total });
         return (_render.createElement("defs", null,
             _render.createElement("linearGradient", { id: getGradientId(index) },
                 _render.createElement("stop", { offset: "5%", "stop-color": color1 }),
@@ -11416,13 +11424,13 @@
             .join(" ");
     };
     const INNER_CIRCLE_SIZE = 50;
-    const WheelSlice = ({ stroke, index, totalSlices, wheelCenter, wheelRadius, }) => {
+    const WheelSlice = ({ stroke, index, totalSlices, wheelCenter, wheelRadius, data }) => {
         const angleSize = 360 / totalSlices;
         const startPositionOffset = angleSize / 2; // start slices offset from Pegs
         const startAngle = angleSize * index + startPositionOffset;
         return (_render.createElement("fragment", null,
             _render.createElement(WheelSliceGradient, { total: totalSlices, index: index }),
-            _render.createElement("path", { className: "wheel__slice", fill: `url(#${getGradientId(index)})`, stroke: stroke, d: slicePath({
+            _render.createElement("path", { className: `wheel__slice ${JSON.stringify(data)}`, fill: `url(#${getGradientId(index)})`, stroke: stroke, d: slicePath({
                     startAngle,
                     endAngle: startAngle + angleSize,
                     innerCircleRadius: INNER_CIRCLE_SIZE,
@@ -11431,11 +11439,10 @@
                 }) })));
     };
 
-    const WheelSliceGroup = (props) => (_render.createElement("g", { className: props.className }, Array.from({ length: props.sliceCount }).map((_, i) => {
-        return (_render.createElement(WheelSlice, { index: i, stroke: "black", totalSlices: props.sliceCount, wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius }));
+    const WheelSliceGroup = (props) => (_render.createElement("g", { className: props.className }, props.slices.map((_, i) => {
+        return (_render.createElement(WheelSlice, { index: i, stroke: "black", data: _, totalSlices: props.slices.length, wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius }));
     })));
 
-    // todo: move into util
     const getXYCoords = (angle, radius, offset) => ({
         x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
         y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
@@ -11443,7 +11450,7 @@
     const DISTANCE_FROM_EDGE = 90;
     const TEXT_CONTAINER_SIZE = 10;
     const WheelText = (props) => {
-        const angle = props.index * (360 / props.totalSlices);
+        const angle = 360 - props.index * (360 / props.totalSlices);
         const { x, y } = getXYCoords(angle, props.wheelRadius, DISTANCE_FROM_EDGE);
         return (_render.createElement("fragment", null,
             _render.createElement("text", { fill: "black", stroke: "white", "text-anchor": "middle", x: props.wheelCenter.x - x, y: props.wheelCenter.y - y + TEXT_CONTAINER_SIZE, style: {
@@ -11452,9 +11459,13 @@
                     transform: `rotate(${270 - angle}deg)`,
                     transformOrigin: "center center",
                     transformBox: "fill-box",
-                    // textShadow: "1px 1px 1px #000",
                     fontSize: `20px`,
-                } }, props.children)));
+                }, selector: state => state.slices, connect: (slices) => {
+                    var _a;
+                    return ({
+                        textContent: ((_a = slices[props.index]) === null || _a === void 0 ? void 0 : _a.text) || ""
+                    });
+                } })));
     };
 
     const WheelTextGroup = (props) => {
@@ -11477,24 +11488,20 @@
         _render.createElement("g", { className: "wheel__rotation-group", connect: wheelGroupTransform, selector: wheelSelector$1, style: {
                 transformBox: "fill-box",
                 transformOrigin: "center center",
-                cursor: "grab"
+                cursor: "grab",
             } },
-            _render.createElement("circle", { className: "wheel__background", fill: "rgb(147 198 147)", stroke: "black", cx: props.center.x, cy: props.center.y, r: props.radius, style: {
-                    strokeWidth: '5px',
-                    transformBox: "fill-box",
-                    transformOrigin: "center center",
-                } }),
-            _render.createElement("circle", { className: "wheel__background", fill: "rgb(147 198 147)", stroke: "black", cx: props.center.x, cy: props.center.y, r: 50, style: {
-                    strokeWidth: '5px',
-                    transformBox: "fill-box",
-                    transformOrigin: "center center",
-                } }),
-            _render.createElement("circle", { className: "wheel__center", fill: "grey", stroke: "rgb(50,50,50)", cx: props.center.x, cy: props.center.y, r: 10, style: {
+            _render.createElement("circle", { className: "wheel__background", fill: "rgba(196, 228, 245, 0.5)", stroke: "black", cx: props.center.x, cy: props.center.y, r: props.radius, style: {
                     strokeWidth: "5px",
                     transformBox: "fill-box",
                     transformOrigin: "center center",
                 } }),
-            _render.createElement(WheelSliceGroup, { className: "wheel__slices", sliceCount: props.sliceCount, wheelCenter: props.center, wheelRadius: props.radius }),
+            _render.createElement("image", { x: props.center.x - 50, y: props.center.y - 50, href: "static/spiral.png", height: "100px", width: "100px" }),
+            _render.createElement("circle", { className: "wheel__center", fill: "grey", stroke: "black", cx: props.center.x, cy: props.center.y, r: 5, style: {
+                    strokeWidth: "2px",
+                    transformBox: "fill-box",
+                    transformOrigin: "center center",
+                } }),
+            _render.createElement(WheelSliceGroup, { className: "wheel__slices", slices: props.slices || [], wheelCenter: props.center, wheelRadius: props.radius }),
             _render.createElement(WheelTextGroup, { className: "wheel__slices-text", slices: props.slices, sliceCount: props.sliceCount, wheelCenter: props.center, wheelRadius: props.radius }),
             _render.createElement(PegGroup, { className: "wheel__pegs", pegs: props.pegs, wheelRadius: props.radius, width: props.width }))));
 
@@ -11538,24 +11545,6 @@
             } }));
     };
 
-    const getDecimal = (n) => n - Math.floor(n);
-
-    // convert radian rotation value to degrees 
-    const radianRotationsToDegrees = (angle) => {
-        const rotations = angle / (2 * Math.PI); // radian to rotations
-        const degreeRotation = 360 * getDecimal(rotations);
-        return degreeRotation > 0 ? 360 - degreeRotation : degreeRotation;
-    };
-
-    const getAngleWithOffset = (angle, offset) => {
-        const angleWithOffset = radianRotationsToDegrees(angle) - offset;
-        // translate to value between 0 and 360
-        return angleWithOffset > 360
-            ? 360 - angleWithOffset
-            : angleWithOffset < 0
-                ? 360 + angleWithOffset
-                : angleWithOffset;
-    };
     // translate indices at start and end of circle
     const circularIndexResolver = (total) => (index) => {
         switch (true) {
@@ -11567,36 +11556,30 @@
                 return index;
         }
     };
-    const calculatePosition = (angle, count) => {
-        const angleSize = 360 / count;
-        const startPositionOffset = angleSize / 2;
-        return getAngleWithOffset(angle, startPositionOffset) / angleSize;
-    };
-    const findIndexFromPosition = (position) => {
-        const index = 12 - Math.ceil(position);
-        const difference = 12 - position - index;
-        const shouldCheckStopper = difference > 0.85 || difference < 0.2;
-        return {
-            index,
-            shouldCheckStopper,
-        };
-    };
+    const radiansToDegrees = (angle) => angle * (180 / Math.PI);
+    const degreesToAbsoluteAngle = (angle) => ((angle % 360) + 360) % 360;
+    const isOutsideOfThreshold = (threshold) => threshold > 0.85 || threshold < 0.2;
     const calculateScoreboardIndex = (angle, state) => {
-        const currentPosition = calculatePosition(angle, state.sliceCount);
-        const { index, shouldCheckStopper } = findIndexFromPosition(currentPosition);
+        const angleSize = 360 / state.sliceCount;
+        const startPositionOffset = angleSize / 2;
+        const angleInDegrees = degreesToAbsoluteAngle(radiansToDegrees(angle) + startPositionOffset);
+        const rawIndex = Math.floor(angleInDegrees / angleSize);
+        const index = rawIndex > 0 ? state.sliceCount - rawIndex : 0;
+        const threshold = (angleInDegrees / angleSize) - rawIndex;
+        const shouldCheckStopper = isOutsideOfThreshold(threshold);
         const getIndexFromCircle = circularIndexResolver(state.sliceCount);
         if (shouldCheckStopper) {
             const stopper = findBodyById(STOPPER)(state);
             const stopperIsRight = stopper.angle < -0.01;
             if (stopperIsRight) {
-                return getIndexFromCircle(index - 1);
+                return getIndexFromCircle(index + 1);
             }
             const stopperIsLeft = stopper.angle > 0.02;
             if (stopperIsLeft) {
-                return getIndexFromCircle(index + 1);
+                return getIndexFromCircle(index - 1);
             }
         }
-        return getIndexFromCircle(index);
+        return index;
     };
 
     const wheelSelector = findBodyById(WHEEL_OF_FORTUNE);
@@ -11616,19 +11599,17 @@
     const scoreboardSelector = (state) => state;
     const Scoreboard = () => {
         return (_render.createElement("section", { style: {
-                position: "absolute",
-                fontFamily: "'Alfa Slab One', verdana",
-                padding: "5px 20px",
+                backgroundColor: "black",
                 border: "2px solid rgb(60,60,60)",
-                width: '150px',
-                height: '80px',
-                textAlign: "center",
                 borderRadius: "5px",
                 bottom: "10px",
-                left: "50%",
-                transform: 'translate(-50%)',
-                zIndex: "1000",
                 color: "white",
+                fontFamily: "'Alfa Slab One', verdana",
+                height: "80px",
+                left: "50%",
+                padding: "5px 20px",
+                position: "absolute",
+                textAlign: "center",
                 textShadow: [
                     "0 0 2px black",
                     "0 0 7px #bdff9f",
@@ -11636,9 +11617,10 @@
                     "0 0 21px #bdff9f",
                     "0 0 36px #bdff9f",
                 ].join(", "),
-                backgroundColor: "black",
+                transform: "translate(-50%)",
+                width: "150px",
             } },
-            _render.createElement("p", { selector: scoreboardSelector, connect: scoreboardTransform })));
+            _render.createElement("p", { connect: scoreboardTransform, selector: scoreboardSelector })));
     };
 
     const pegsSelector = ({ bodies }) => bodies.filter(body => body.label.startsWith(PEG));
@@ -11646,7 +11628,7 @@
     const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
     const setScale = (element, scale) => setStyles(element, {
-        transform: `scale(${scale}, ${scale})`
+        transform: `scale(${scale}, ${scale})`,
     });
     const TITLE_GROW_SCALE = 1.5;
     const TITLE_DEFAULT_SCALE = 1;
@@ -11660,96 +11642,155 @@
         setScale(element, TITLE_DEFAULT_SCALE);
     });
     const Title = ({ children }) => {
-        return _render.createElement("h1", { className: "main__title", style: {
+        return (_render.createElement("h1", { className: "main__title", style: {
                 color: "white",
                 fontFamily: "Passion One, verdana, sans-serif",
                 position: "absolute",
                 top: "20px",
                 left: "40px",
-                zIndex: "1000",
                 display: "flex",
-                flexDirection: "row"
-            } }, children && children[0].split(" ").map((child, i) => {
-            return _render.createElement("span", { style: {
-                    display: "inline-block",
-                    transition: `transform ${TITLE_SCALE_TIME_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
-                    cursor: "pointer",
-                    textShadow: "2px 2px 2px black",
-                    paddingRight: "10px"
-                }, ref: (ref) => introAnimation(ref, i), onMouseEnter: (e) => {
-                    setScale(e.target, TITLE_GROW_SCALE);
-                }, onMouseLeave: (e) => {
-                    setScale(e.target, TITLE_DEFAULT_SCALE);
-                } }, child);
-        }));
+                flexDirection: "row",
+            } }, children &&
+            children[0].split(" ").map((child, i) => {
+                return (_render.createElement("span", { style: {
+                        display: "inline-block",
+                        transition: `transform ${TITLE_SCALE_TIME_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+                        cursor: "pointer",
+                        textShadow: "2px 2px 2px black",
+                        paddingRight: "10px",
+                    }, ref: (ref) => introAnimation(ref, i), onMouseEnter: (e) => {
+                        setScale(e.target, TITLE_GROW_SCALE);
+                    }, onMouseLeave: (e) => {
+                        setScale(e.target, TITLE_DEFAULT_SCALE);
+                    } }, child));
+            })));
     };
 
+    const sidebarSelector = (state) => state.sideBarOpen;
+
+    const Close = (_a) => {
+        var { color } = _a, props = __rest(_a, ["color"]);
+        return (_render.createElement("svg", Object.assign({ viewBox: "0 0 24 24", xmlns: "http://www.w3.org/2000/svg" }, props),
+            _render.createElement("path", { id: "Vector", d: "M18 18L12 12M12 12L6 6M12 12L18 6M12 12L6 18", stroke: color, "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" })));
+    };
+
+    const sidebarFadeTransform = (sideBarOpen) => ({
+        style: {
+            opacity: sideBarOpen ? 0.6 : 0,
+            pointerEvents: sideBarOpen ? "all" : "none",
+        },
+    });
     const SideBarFade = (props) => {
-        return (_render.createElement("div", { style: {
-                position: "absolute",
-                top: "0p",
-                right: "0",
-                bottom: "0",
-                left: '0',
-                transition: "opacity .3s ease-out",
-            }, selector: (state) => state.sideBarOpen, connect: (sideBarOpen) => ({
-                style: {
-                    opacity: sideBarOpen ? 0.8 : 0,
-                },
-            }), onClick: () => {
+        return (_render.createElement("div", { className: "sidebar__fade", connect: sidebarFadeTransform, onClick: () => {
                 props.dispatch(toggleSidebar(false));
+            }, selector: sidebarSelector, style: {
+                backgroundColor: "black",
+                bottom: "0",
+                left: "0",
+                position: "absolute",
+                right: "0",
+                top: "0",
+                transition: "opacity .3s ease-out",
             } }));
     };
 
+    const Hamburger = (_a) => {
+        var { fill } = _a, props = __rest(_a, ["fill"]);
+        return (_render.createElement("svg", Object.assign({ viewBox: "0 0 15 15", xmlns: "http://www.w3.org/2000/svg" }, props),
+            _render.createElement("path", { "clip-rule": "evenodd", d: "M1.5 3C1.22386 3 1 3.22386 1 3.5C1 3.77614 1.22386 4 1.5 4H13.5C13.7761 4 14 3.77614 14 3.5C14 3.22386 13.7761 3 13.5 3H1.5ZM1 7.5C1 7.22386 1.22386 7 1.5 7H13.5C13.7761 7 14 7.22386 14 7.5C14 7.77614 13.7761 8 13.5 8H1.5C1.22386 8 1 7.77614 1 7.5ZM1 11.5C1 11.2239 1.22386 11 1.5 11H13.5C13.7761 11 14 11.2239 14 11.5C14 11.7761 13.7761 12 13.5 12H1.5C1.22386 12 1 11.7761 1 11.5Z", fill: fill, "fill-rule": "evenodd" })));
+    };
+
+    const sidebarTriggerTransform = (sideBarOpen) => ({
+        style: {
+            transform: `rotateY(${sideBarOpen ? "90deg" : "0"})`,
+        },
+    });
     const SideBarTrigger = (props) => {
-        return (_render.createElement("button", { style: {
-                position: "absolute",
-                top: "20px",
-                right: "20px",
-                transition: "transform .5s ease-out",
-            }, selector: (state) => state.sideBarOpen, connect: (sideBarOpen) => ({
-                style: {
-                    transform: `translateY(${sideBarOpen ? "-40px" : '0'})`,
-                },
-            }), onClick: () => {
+        return (_render.createElement("button", { className: "sidebar__trigger", connect: sidebarTriggerTransform, onClick: () => {
                 props.dispatch(toggleSidebar(true));
-            } }, "Show Settings"));
+            }, selector: sidebarSelector, style: {
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                position: "absolute",
+                right: "20px",
+                top: "20px",
+                transition: "transform .3s",
+            } },
+            _render.createElement(Hamburger, { fill: "#b0b0be", height: "24px", width: "24px" })));
     };
 
-    const SliceSettings = ({ index, slice, }) => {
-        return (_render.createElement("div", null,
-            _render.createElement("label", null,
-                _render.createElement("span", null, `Slice ${index} Value:`),
-                _render.createElement("input", { value: slice.text, name: `slice-${index}` })),
-            _render.createElement("label", null,
-                _render.createElement("span", null, `Slice ${index} Value:`),
-                _render.createElement("input", { value: slice.color, name: `slice-${index}` }))));
+    const SliceSettingsInput = ({ backgroundColor = "#303030", label, name, onChange, value, }) => {
+        return (_render.createElement("label", { style: {
+                marginRight: "10px",
+                marginTop: "30px",
+                position: "relative",
+            } },
+            _render.createElement("span", { style: {
+                    color: 'white',
+                    fontFamily: 'verdana',
+                    fontSize: "12px",
+                    left: "2px",
+                    position: "absolute",
+                    top: "-18px",
+                } }, label),
+            _render.createElement("input", { name: name, onChange: (e) => {
+                    onChange({ text: e.target.value });
+                }, style: {
+                    backgroundColor,
+                    border: "none",
+                    borderRadius: "8px",
+                    caretColor: 'white',
+                    fontFamily: '"Alfa Slab One", verdana',
+                    height: "24px",
+                    textAlign: "center",
+                    textShadow: "-1px -1px 0 white,  1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white",
+                }, value: value })));
     };
 
+    const SliceSettings = ({ index, onChange, slice, total, }) => {
+        const { color1 } = getWheelColors({ index, total });
+        return (_render.createElement("div", { style: { display: "flex" } },
+            _render.createElement(SliceSettingsInput, { backgroundColor: slice.color || color1, label: `Slice ${index + 1} Text:`, name: `slice-${index}-text`, onChange: onChange, value: slice.text })));
+    };
+
+    const sidebarTrasform = (sideBarOpen) => ({
+        style: {
+            transform: `translateX(${sideBarOpen ? 0 : "110%"})`,
+        },
+    });
     const SideBar = (props) => {
         var _a;
         return (_render.createElement("fragment", null,
+            _render.createElement(SideBarTrigger, Object.assign({}, props)),
             _render.createElement(SideBarFade, Object.assign({}, props)),
-            _render.createElement("div", { style: {
+            _render.createElement("div", { connect: sidebarTrasform, selector: sidebarSelector, style: {
+                    background: "rgba(196, 228, 245, 0.5)",
+                    bottom: "0",
                     position: "absolute",
-                    width: "40%",
-                    bottom: '0',
-                    background: "grey",
-                    right: '0',
-                    top: '0',
-                    transition: 'transform 1s ease-in',
-                }, selector: (state) => state.sideBarOpen, connect: (sideBarOpen) => ({
-                    style: {
-                        transform: `translateX(${sideBarOpen ? 0 : "100%"})`,
-                    },
-                }) },
+                    right: "0",
+                    top: "0",
+                    transition: "transform 1s cubic-bezier(0.16, 1, 0.3, 1)",
+                    width: "300px",
+                } },
                 _render.createElement("button", { onClick: () => {
                         props.dispatch(toggleSidebar(false));
-                    } }, "X"),
-                _render.createElement("form", null, (_a = props.state.slices) === null || _a === void 0 ? void 0 : _a.map((slice, index) => {
-                    return _render.createElement(SliceSettings, { slice: slice, index: index });
-                }))),
-            _render.createElement(SideBarTrigger, Object.assign({}, props))));
+                    }, style: {
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        margin: "10px",
+                    } },
+                    _render.createElement(Close, { width: "24px", height: "24px", color: "black" })),
+                _render.createElement("form", { style: { padding: "0px 20px" } }, (_a = props.state.slices) === null || _a === void 0 ? void 0 : _a.map((slice, index) => {
+                    var _a;
+                    return (_render.createElement(SliceSettings, { index: index, onChange: ({ color, hidden, text, }) => props.dispatch(updateWheelSlice({
+                            color,
+                            hidden,
+                            index,
+                            text,
+                        })), slice: slice, total: ((_a = props.state.slices) === null || _a === void 0 ? void 0 : _a.length) || 0 }));
+                })))));
     };
 
     const wheelInititalPosition = (state) => {
@@ -11762,33 +11803,21 @@
             radius: wheel.plugin.initialRadius,
         };
     };
-    // const getUASpinEvents = ({
-    //   handleDragWheel,
-    //   handleReleaseWheel,
-    // }: {
-    //   handleDragWheel: () => void;
-    //   handleReleaseWheel: () => void;
-    // }) => {
-    //   // sniff user agent to attach mobile vs desktop events
-    //   const isMobileDevice = isMobile();
-    //   const startEvent = isMobileDevice ? "onTouchStart" : "onMouseDown";
-    //   const endEvent = isMobileDevice ? "onTouchEnd" : "onMouseUp";
-    //   return {
-    //     [startEvent]: handleDragWheel,
-    //     [endEvent]: handleReleaseWheel,
-    //   };
-    // };
     const App = (props) => {
         const state = store.getState();
         const { center, radius } = wheelInititalPosition(state);
         return (_render.createElement("main", { store: store },
-            _render.createElement(Title, null, "Wheel of Misfortune"),
-            _render.createElement(Scoreboard, null),
             _render.createElement("div", { className: "main__svg-container", style: { position: "absolute" } },
-                _render.createElement(SvgBackground, { style: { background: 'url("static/background.png")', cursor: "grab" }, height: state.height, width: state.width },
+                _render.createElement(SvgBackground, { style: { background: 'url("static/background.png")', userSelect: 'none' }, height: state.height, width: state.width, onMouseDown: (e) => {
+                        setStyles(e.target, { cursor: "grabbing" });
+                    }, onMouseUp: (e) => {
+                        setStyles(e.target, { cursor: "grab" });
+                    } },
                     _render.createElement(Stand, { height: state.height, wheelCenter: center, wheelRadius: radius }),
                     _render.createElement(Wheel, { center: center, radius: radius, sliceCount: state.sliceCount, slices: state.slices, pegs: pegsSelector(state), height: state.height, width: state.width }),
-                    _render.createElement(Stopper, null))),
+                    _render.createElement(Stopper, null)),
+                _render.createElement(Scoreboard, null)),
+            _render.createElement(Title, null, "Wheel of Misfortune"),
             _render.createElement(SideBar, { reset: props.reset, state: state, dispatch: store.dispatch })));
     };
 
@@ -11819,7 +11848,8 @@
     };
     const initApp = () => {
         // update store with inital viewport size
-        store.dispatch(updateViewportSize({ height: window.innerWidth, width: window.innerWidth }));
+        store.dispatch(updateViewportSize({ height: window.innerHeight, width: window.innerWidth }));
+        /* ---  TOGGLE DEBUG HERE  --- */
         const physicsEntry = initPhysics(store, { debug: false });
         const domEntry = initDOM({
             onBeforeStart: () => physicsEntry.start(),
@@ -11830,11 +11860,11 @@
         // add window resize events
         window.addEventListener("resize", debounce(() => {
             store.dispatch(updateViewportSize({
-                height: window.innerWidth,
+                height: window.innerHeight,
                 width: window.innerWidth,
             }));
             domEntry.reset();
-        }, 1000));
+        }, 100));
     };
     document.addEventListener("DOMContentLoaded", initApp);
 

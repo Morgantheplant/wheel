@@ -47,12 +47,14 @@ export const WheelSlice = ({
   totalSlices,
   wheelCenter,
   wheelRadius,
+  data
 }: {
   stroke?: string,
   index: number,
   totalSlices: number,
   wheelCenter: {x: number, y: number},
   wheelRadius: number,
+  data: any
 }) => {
   const angleSize = 360 / totalSlices;
   const startPositionOffset = angleSize / 2; // start slices offset from Pegs
@@ -61,7 +63,7 @@ export const WheelSlice = ({
     <fragment>
       <WheelSliceGradient total={totalSlices} index={index} />
       <path
-        className="wheel__slice"
+        className={`wheel__slice ${JSON.stringify(data)}`}
         fill={`url(#${getGradientId(index)})`}
         stroke={stroke}
         d={slicePath({

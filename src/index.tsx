@@ -31,8 +31,10 @@ const initDOM = (options: {
 const initApp = () => {
   // update store with inital viewport size
   store.dispatch(
-    updateViewportSize({ height: window.innerWidth, width: window.innerWidth })
+    updateViewportSize({ height: window.innerHeight, width: window.innerWidth })
   );
+  
+  /* ---  TOGGLE DEBUG HERE  --- */
   const physicsEntry = initPhysics(store, { debug: false });
   const domEntry = initDOM({
     onBeforeStart: () => physicsEntry.start(),
@@ -48,12 +50,12 @@ const initApp = () => {
     debounce(() => {
       store.dispatch(
         updateViewportSize({
-          height: window.innerWidth,
+          height: window.innerHeight,
           width: window.innerWidth,
         })
       );
       domEntry.reset();
-    }, 1000)
+    }, 100)
   );
 };
 

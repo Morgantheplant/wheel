@@ -20,19 +20,17 @@ export const Scoreboard = () => {
   return (
     <section
       style={{
-        position: "absolute",
-        fontFamily: "'Alfa Slab One', verdana",
-        padding: "5px 20px",
+        backgroundColor: "black",
         border: "2px solid rgb(60,60,60)",
-        width: '150px',
-        height: '80px',
-        textAlign: "center", 
         borderRadius: "5px",
         bottom: "10px",
-        left: "50%",
-        transform: 'translate(-50%)',
-        zIndex: "1000",
         color: "white",
+        fontFamily: "'Alfa Slab One', verdana",
+        height: "80px",
+        left: "50%",
+        padding: "5px 20px",
+        position: "absolute",
+        textAlign: "center",
         textShadow: [
           "0 0 2px black",
           "0 0 7px #bdff9f",
@@ -40,10 +38,11 @@ export const Scoreboard = () => {
           "0 0 21px #bdff9f",
           "0 0 36px #bdff9f",
         ].join(", "),
-        backgroundColor: "black",        
+        transform: "translate(-50%)",
+        width: "150px",
       }}
     >
-      <p selector={scoreboardSelector} connect={scoreboardTransform} />
+      <p connect={scoreboardTransform} selector={scoreboardSelector} />
     </section>
   );
 };

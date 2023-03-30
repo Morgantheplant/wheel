@@ -1,12 +1,19 @@
-import _render from 'packages/render';
-import { Children } from 'packages/render/types';
-import { CSSProperties } from 'react';
+import _render from "packages/render";
+import { Children } from "packages/render/types";
+import { CSSProperties } from "react";
 
-export const SvgBackground = (props: {width: number, height: number, style?: CSSProperties, children: Children})=> {
-    return <svg 
-    style={props.style}
-    version="1.1"
-    width={props.width}
-    height={props.height}
-    >{props.children}</svg>
-}
+export const SvgBackground = ({
+  children,
+  ...rest
+}: {
+  width: number;
+  height: number;
+  style?: CSSProperties;
+  children: Children;
+} & JSX.IntrinsicElements["svg"]) => {
+  return (
+    <svg version="1.1" {...rest}>
+      {children}
+    </svg>
+  );
+};
