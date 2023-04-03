@@ -18,7 +18,7 @@ const circularIndexResolver = (total: number) => (index: number) => {
 
 const radiansToDegrees = (angle:number) => angle * (180/Math.PI);
 const degreesToAbsoluteAngle = (angle:number) => ((angle % 360) + 360) % 360;
-const isOutsideOfThreshold = (threshold: number) =>   threshold > 0.85 || threshold < 0.2;
+const isOutsideOfThreshold = (threshold: number) =>   threshold > 0.8 || threshold < 0.2;
 
 export const calculateScoreboardIndex = (angle: number, state: WheelState): number => {
   const angleSize = 360 /  state.sliceCount;
@@ -29,16 +29,16 @@ export const calculateScoreboardIndex = (angle: number, state: WheelState): numb
   const threshold = (angleInDegrees / angleSize)  - rawIndex
   const shouldCheckStopper = isOutsideOfThreshold(threshold)
   const getIndexFromCircle = circularIndexResolver(state.sliceCount);
+  const stopper = findBodyById(STOPPER)(state);
   if (shouldCheckStopper) {
-    const stopper = findBodyById(STOPPER)(state);
-    const stopperIsRight = stopper.angle < -0.01;
+    const stopperIsRight = stopper.angle < -0.5;
     if (stopperIsRight) {
       return getIndexFromCircle(index + 1);
     }
-    const stopperIsLeft = stopper.angle > 0.02;
+    const stopperIsLeft = stopper.angle > 0.5;
     if (stopperIsLeft) {
       return getIndexFromCircle(index - 1);
-    }
+    } 
   }
   return index
 

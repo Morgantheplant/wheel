@@ -38,6 +38,7 @@ export const SliceSettingsInput = ({
         onChange={(e)=>{
            onChange({ text: e.target.value })
         }}
+        maxLength={12}
         style={{
           backgroundColor,
           border: "none",
