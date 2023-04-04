@@ -10,4 +10,12 @@ html {
 body {
   margin: 0;
   padding: 0;
+  position: relative;
+}
+
+@media (min-resolution: 2ddpx) {
+  svg {
+    shape-rendering: optimizeSpeed;
+    text-rendering: optimizeSpeed;
+  }
 }
