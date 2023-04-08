@@ -35,7 +35,7 @@ const initApp = () => {
   );
   
   /* ---  TOGGLE DEBUG HERE  --- */
-  const physicsEntry = initPhysics(store, { debug: false });
+  const physicsEntry = initPhysics(store, { debug: true });
   const domEntry = initDOM({
     onBeforeStart: () => physicsEntry.start(),
     onBeforeReset: () => physicsEntry.reset(),

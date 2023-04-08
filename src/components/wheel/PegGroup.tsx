@@ -8,8 +8,8 @@ export const PegGroup = (props: { width: number, wheelRadius: number, pegs: Matt
         return (
           <Peg
             center={{
-              x: peg.plugin.initialXPosition + props.width / 2,
-              y: peg.plugin.initialYPosition + props.wheelRadius + 100,
+              x: peg.plugin.initialXPosition + props.wheelRadius,
+              y: peg.plugin.initialYPosition + props.wheelRadius,
             }}
             key={i}
             radius={peg.circleRadius as number} // todo: type Pegs

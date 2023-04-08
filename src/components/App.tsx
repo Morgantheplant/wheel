@@ -23,42 +23,45 @@ const wheelInititalPosition = (state: WheelState) => {
   };
 };
 
-export const App = (props: {reset: () => void}) => {
+export const App = (props: { reset: () => void }) => {
   const state = store.getState();
   const { center, radius } = wheelInititalPosition(state);
   return (
     <main store={store as ReturnType<typeof createStore>}>
       <div
         className="main__svg-container"
-        style={{ position: "absolute" }}
+        style={{
+          background: 'url("static/background.png")',
+          userSelect: "none",
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+        onMouseDown={(e) => {
+          setStyles(e.target as HTMLElement, { cursor: "grabbing" });
+        }}
+        onMouseUp={(e) => {
+          setStyles(e.target as HTMLElement, { cursor: "grab" });
+        }}
       >
-        <SvgBackground
-          style={{ background: 'url("static/background.png")', userSelect:'none' }}
+        <Stand
+          height={state.height}
+          wheelCenter={center}
+          wheelRadius={radius}
+        />
+        <Wheel
+          center={center}
+          radius={radius}
+          sliceCount={state.sliceCount}
+          slices={state.slices}
+          pegs={pegsSelector(state)}
           height={state.height}
           width={state.width}
-          onMouseDown={(e) => {
-            setStyles(e.target as HTMLElement, { cursor: "grabbing" });
-          }}
-          onMouseUp={(e) => {
-            setStyles(e.target as HTMLElement, { cursor: "grab" });
-          }}
-        >
-          <Stand
-            height={state.height}
-            wheelCenter={center}
-            wheelRadius={radius}
-          />
-          <Wheel
-            center={center}
-            radius={radius}
-            sliceCount={state.sliceCount}
-            slices={state.slices}
-            pegs={pegsSelector(state)}
-            height={state.height}
-            width={state.width}
-          />
-          <Stopper />
-        </SvgBackground>
+        />
+        <Stopper />
+
         <Scoreboard />
       </div>
       <Title>Wheel of Misfortune</Title>

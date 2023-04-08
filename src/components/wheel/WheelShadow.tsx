@@ -8,8 +8,6 @@ export const WheelShadow = (props: {center: {x: number, y: number}, className?: 
     </filter>
     <circle
       className="wheel__shadow"
-      cx={props.center.x + 5}
-      cy={props.center.y + 8}
       r={props.radius}
       style={{
         fill: "rgba(0,0,0, 0.4)",

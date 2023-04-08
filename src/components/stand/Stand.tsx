@@ -8,17 +8,16 @@ export const Stand = (props: {
   const distancepastWheelTop = 40;
   const width = 50;
   return (
-    <rect
+    <div
       className="stand__base"
-      height={props.height}
-      width={width}
-      stroke="grey"
-      x={props.wheelCenter.x - width / 2}
-      y={props.wheelCenter.y - props.wheelRadius - distancepastWheelTop}
       style={{
-        strokeWidth: 1,
-        transformBox: "fill-box",
-        transformOrigin: "center center",
+        position: 'absolute',
+        left: `${props.wheelCenter.x - width / 2}px`,
+        top: `${props.wheelCenter.y - props.wheelRadius - distancepastWheelTop}px`,
+        border: '1px solid grey',
+        width: `${width}px`,
+        height: `${props.height}px`,
+        backgroundColor: "black"
       }}
     />
   );

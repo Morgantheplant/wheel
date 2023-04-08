@@ -25,6 +25,8 @@ export const createStopperEntities = ({
       plugin: {
         initialWidth: stopperWidth,
         initialHeight: stopperHeight,
+        initialXPosition: stopperX,
+        initialYPosition: stopperY,
       },
     }
   );
