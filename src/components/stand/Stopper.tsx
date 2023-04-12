@@ -23,13 +23,13 @@ const createStopperTrianglePoints = (stopper: Matter.Body) => {
 const stopperTransform = (body: Matter.Body) => ({
   style: {
     position: "absolute",
-    top: `${body.plugin.initialYPosition - body.plugin.initialHeight/2 + 5}px `,
+    top: `${body.plugin.initialYPosition - body.plugin.initialHeight/2 + 10}px `,
     left: `${body.plugin.initialXPosition - body.plugin.initialWidth / 2}px`,
     overflow: 'hidden',
     height: `${body.plugin.initialHeight}px`,
     width: `${body.plugin.initialWidth}px`,
     transform: `rotate(${body.angle}rad)`,
-    transformOrigin: "4px 20px",
+    transformOrigin: "4px 10px",
   },
 });
 
@@ -50,7 +50,6 @@ export const Stopper = () => {
           style={{
             strokeLinejoin: "round",
             strokeWidth: "3px",
-            transformBox: "fill-box",
           }}
         />
       </svg>

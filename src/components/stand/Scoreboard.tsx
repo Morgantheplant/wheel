@@ -27,7 +27,6 @@ export const Scoreboard = () => {
         bottom: "10px",
         color: "white",
         fontFamily: "'Alfa Slab One', verdana",
-        height: "80px",
         left: "50%",
         padding: "5px 20px",
         position: "absolute",
@@ -40,7 +39,8 @@ export const Scoreboard = () => {
           "0 0 36px #bdff9f",
         ].join(", "),
         transform: "translate(-50%)",
-        width: "150px",
+        height:`${80}px`,
+        width:`${150}px`
       }}
     >
       <p connect={scoreboardTransform} selector={scoreboardSelector} />

@@ -1,7 +1,6 @@
 import _render from "packages/render";
 import { WHEEL_OF_FORTUNE } from "../../contants/bodies";
 import { findBodyById } from "../../selectors/findBodyById";
-import { WheelShadow } from "./WheelShadow";
 import { PegGroup } from "./PegGroup";
 import { WheelSliceGroup } from "./WheelSliceGroup";
 import { WheelTextGroup } from "./WheelTextGroup";
