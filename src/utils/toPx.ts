@@ -1,0 +1,1 @@
+export const toPx = (value: string|number ) => `${value}px`;

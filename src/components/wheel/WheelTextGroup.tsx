@@ -11,7 +11,7 @@ export const WheelTextGroup = (props: {
 }) => {
   const textValues =  props.slices || Array.from({ length: props.sliceCount })
   return (
- <g className={props.className}>
+ <div className={props.className}>
     {textValues.map((slice, i) => {
       return (
         <WheelText
@@ -24,5 +24,5 @@ export const WheelTextGroup = (props: {
         </WheelText>
       );
     })}
-  </g>
+  </div>
 )};

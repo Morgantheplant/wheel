@@ -11359,7 +11359,7 @@
         };
     })();
 
-    const Peg = (props) => (_render.createElement("circle", { cx: props.center.x, cy: props.center.y, fill: "grey", filter: "drop-shadow(3px 5px 2px rgb(0 0 0 / 0.5))", r: props.radius, stroke: "black", style: {
+    const Peg = (props) => (_render.createElement("circle", { cx: props.center.x, cy: props.center.y, fill: "grey", filter: "drop-shadow(3px 5px 2px rgb(0 0 0 / 0.5))", r: props.radius, stroke: "black", "data-foo": "bar", style: {
             strokeWidth: 1,
             transformBox: "fill-box",
             transformOrigin: "center center",
@@ -11433,36 +11433,43 @@
         return (_render.createElement(WheelSlice, { index: i, stroke: "black", data: _, totalSlices: props.slices.length, wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius }));
     })));
 
-    const getXYCoords = (angle, radius, offset) => ({
-        x: (radius - offset) * Math.sin((Math.PI * 2 * angle) / 360),
-        y: (radius - offset) * Math.cos((Math.PI * 2 * angle) / 360),
+    const toPx = (value) => `${value}px`;
+
+    const getXYCoords = (angle, radius) => ({
+        x: radius * Math.sin((Math.PI * 2 * angle) / 360),
+        y: radius * Math.cos((Math.PI * 2 * angle) / 360),
     });
-    const DISTANCE_FROM_EDGE = 90;
-    const TEXT_CONTAINER_SIZE = 10;
     const WheelText = (props) => {
         const angle = 360 - props.index * (360 / props.totalSlices);
-        const { x, y } = getXYCoords(angle, props.wheelRadius, DISTANCE_FROM_EDGE);
-        return (_render.createElement("fragment", null,
-            _render.createElement("g", { className: `transform-center`, style: {
-                    transform: `rotate(${270 - angle}deg)`,
-                    transformOrigin: "center center",
-                    transformBox: "fill-box",
-                } },
-                _render.createElement("text", { fill: "black", stroke: "white", "text-anchor": "middle", x: props.wheelCenter.x - x, y: props.wheelCenter.y - y + TEXT_CONTAINER_SIZE, style: {
-                        fontWeight: "bold",
-                        fontFamily: "'Alfa Slab One', verdana",
-                        fontSize: `20px`,
-                    }, selector: (state) => state.slices, connect: (slices) => {
-                        var _a;
-                        return ({
-                            textContent: ((_a = slices[props.index]) === null || _a === void 0 ? void 0 : _a.text) || "",
-                        });
-                    } }))));
+        const { x, y } = getXYCoords(angle, props.wheelRadius / 2);
+        const height = 30;
+        const width = props.wheelRadius;
+        return (_render.createElement("div", { style: {
+                position: "absolute",
+                color: "black",
+                fontWeight: "bold",
+                fontFamily: "'Alfa Slab One', verdana",
+                fontSize: "calc(0.75rem + 1vw)",
+                top: toPx(props.wheelRadius - (height / 2) - y),
+                left: toPx((width / 2) - x),
+                transform: `rotate(${270 - angle}deg) translateX(50px)`,
+                transformOrigin: "center",
+                WebkitTextStrokeColor: "white",
+                WebkitTextStrokeWidth: "1px",
+                textAlign: "center",
+                height: toPx(height),
+                width: toPx(width),
+            }, selector: (state) => state.slices, connect: (slices) => {
+                var _a;
+                return ({
+                    textContent: ((_a = slices[props.index]) === null || _a === void 0 ? void 0 : _a.text) || "",
+                });
+            } }));
     };
 
     const WheelTextGroup = (props) => {
         const textValues = props.slices || Array.from({ length: props.sliceCount });
-        return (_render.createElement("g", { className: props.className }, textValues.map((slice, i) => {
+        return (_render.createElement("div", { className: props.className }, textValues.map((slice, i) => {
             return (_render.createElement(WheelText, { wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius, totalSlices: props.sliceCount, index: i }, (slice === null || slice === void 0 ? void 0 : slice.text) || `$${i + 1}000`));
         })));
     };
@@ -11475,15 +11482,15 @@
     const wheelSelector$1 = findBodyById(WHEEL_OF_FORTUNE);
     const wheelGroupTransform = (body) => ({
         style: {
-            position: 'absolute',
+            position: "absolute",
             top: `${body.plugin.initialYPosition - body.plugin.initialRadius}px`,
             left: `${body.plugin.initialXPosition - body.plugin.initialRadius}px`,
             height: `${body.plugin.initialRadius * 2}px`,
             width: `${body.plugin.initialRadius * 2}px`,
             borderRadius: "50%",
             transform: `rotate(${body.angle}rad)`,
-            transformOrigin: 'center',
-            overflow: 'hidden'
+            transformOrigin: "center",
+            overflow: "hidden",
         },
     });
     const Wheel = (props) => (_render.createElement("fragment", null,
@@ -11501,8 +11508,8 @@
                         transformOrigin: "center center",
                     } }),
                 _render.createElement(WheelSliceGroup, { className: "wheel__slices", slices: props.slices || [], wheelCenter: { x: props.radius, y: props.radius }, wheelRadius: props.radius }),
-                _render.createElement(WheelTextGroup, { className: "wheel__slices-text", slices: props.slices, sliceCount: props.sliceCount, wheelCenter: { x: props.radius, y: props.radius }, wheelRadius: props.radius }),
-                _render.createElement(PegGroup, { className: "wheel__pegs", pegs: props.pegs, wheelRadius: props.radius, width: props.width })))));
+                _render.createElement(PegGroup, { className: "wheel__pegs", pegs: props.pegs, wheelRadius: props.radius, width: props.width })),
+            _render.createElement(WheelTextGroup, { className: "wheel__slices-text", slices: props.slices, sliceCount: props.sliceCount, wheelCenter: { x: props.radius, y: props.radius }, wheelRadius: props.radius }))));
 
     const stopperSelector = findBodyById(STOPPER);
     const toPoints = (values) => values.map((item) => item.join(" ")).join(",");
