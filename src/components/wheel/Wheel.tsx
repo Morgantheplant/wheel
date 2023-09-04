@@ -28,8 +28,7 @@ type WheelProps = {
   width: number;
   center: { x: number; y: number };
   radius: number;
-  slices?: WheelSlice[];
-  sliceCount: number;
+  slices: WheelSlice[];
   pegs: Matter.Body[];
 };
 
@@ -38,6 +37,7 @@ export const Wheel = (props: WheelProps) => (
     <div connect={wheelGroupTransform} selector={wheelSelector}>
       <SvgBackground width={props.radius * 2} height={props.radius * 2}>
         <circle
+          id="wheel-circle"
           className="wheel__background"
           fill="rgba(196, 228, 245, 0.5)"
           stroke="black"
@@ -86,7 +86,6 @@ export const Wheel = (props: WheelProps) => (
       <WheelTextGroup
         className="wheel__slices-text"
         slices={props.slices}
-        sliceCount={props.sliceCount}
         wheelCenter={{ x: props.radius, y: props.radius }}
         wheelRadius={props.radius}
       />

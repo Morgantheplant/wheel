@@ -1,6 +1,7 @@
 import { STOPPER } from "src/contants/bodies";
 import { WheelState } from "src/store/wheelSlice";
 import { findBodyById } from "./findBodyById";
+import { getSliceCount } from "./getSliceCount";
 
 
 // translate indices at start and end of circle
@@ -21,14 +22,15 @@ const degreesToAbsoluteAngle = (angle:number) => ((angle % 360) + 360) % 360;
 const isOutsideOfThreshold = (threshold: number) =>   threshold > 0.8 || threshold < 0.2;
 
 export const calculateScoreboardIndex = (angle: number, state: WheelState): number => {
-  const angleSize = 360 /  state.sliceCount;
+  const sliceCount = getSliceCount(state);
+  const angleSize = 360 /  sliceCount;
   const startPositionOffset = angleSize / 2;
   const angleInDegrees = degreesToAbsoluteAngle(radiansToDegrees(angle) + startPositionOffset)
   const rawIndex = Math.floor(angleInDegrees / angleSize)
-  const index = rawIndex > 0 ? state.sliceCount - rawIndex : 0
+  const index = rawIndex > 0 ? sliceCount - rawIndex : 0
   const threshold = (angleInDegrees / angleSize)  - rawIndex
   const shouldCheckStopper = isOutsideOfThreshold(threshold)
-  const getIndexFromCircle = circularIndexResolver(state.sliceCount);
+  const getIndexFromCircle = circularIndexResolver(sliceCount);
   const stopper = findBodyById(STOPPER)(state);
   if (shouldCheckStopper) {
     const stopperIsRight = stopper.angle < -0.5;

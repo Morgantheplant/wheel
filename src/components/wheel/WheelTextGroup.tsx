@@ -3,21 +3,19 @@ import { WheelSlice } from "src/store/wheelSlice";
 import { WheelText } from "./WheelText";
 
 export const WheelTextGroup = (props: {
-  sliceCount: number;
   wheelRadius: number;
   wheelCenter: { x: number; y: number };
   className?: string;
-  slices?: WheelSlice[];
+  slices: WheelSlice[];
 }) => {
-  const textValues =  props.slices || Array.from({ length: props.sliceCount })
   return (
  <div className={props.className}>
-    {textValues.map((slice, i) => {
+    {props.slices.map((slice, i) => {
       return (
         <WheelText
           wheelCenter={props.wheelCenter}
           wheelRadius={props.wheelRadius}
-          totalSlices={props.sliceCount}
+          totalSlices={props.slices.length}
           index={i}
         >
           {slice?.text || `$${i + 1}000`}

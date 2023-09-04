@@ -26,11 +26,11 @@ export const WheelText = (props: {
         color: "black",
         fontWeight: "bold",
         fontFamily: "'Alfa Slab One', verdana",
-        fontSize: "calc(0.75rem + 1vw)",
+        fontSize: "calc(0.7rem + 0.7vw)",
 
         top: toPx(props.wheelRadius - (height / 2) - y),
         left: toPx((width / 2) - x),
-        transform: `rotate(${270 - angle}deg) translateX(50px)`,
+        transform: `rotate(${270 - angle}deg) translateX(30px)`,
         transformOrigin: "center",
         WebkitTextStrokeColor: "white",
         WebkitTextStrokeWidth: "1px",

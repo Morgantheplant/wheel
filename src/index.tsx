@@ -3,6 +3,7 @@ import { initPhysics } from "./physics/base";
 import { App } from "./components/App";
 import { store, updateViewportSize } from "./store/wheelSlice";
 import { debounce } from "./utils/debounce";
+import { getSliceCount } from "./selectors/getSliceCount";
 
 const initDOM = (options: {
   onBeforeStart: () => void;
@@ -33,7 +34,7 @@ const initApp = () => {
   store.dispatch(
     updateViewportSize({ height: window.innerHeight, width: window.innerWidth })
   );
-  
+
   /* ---  TOGGLE DEBUG HERE  --- */
   const physicsEntry = initPhysics(store, { debug: false });
   const domEntry = initDOM({
@@ -41,9 +42,19 @@ const initApp = () => {
     onBeforeReset: () => physicsEntry.reset(),
     selector: "#entry-point",
   });
-  
+
   domEntry.start();
-  
+
+  // handle full re-render for adding removing slices
+  let sliceCount = getSliceCount(store.getState());
+  store.subscribe((state) => {
+    const currentSliceCount = getSliceCount(state);
+    if (currentSliceCount !== sliceCount) {
+      sliceCount = currentSliceCount;
+      domEntry.reset();
+    }
+  });
+
   // add window resize events
   window.addEventListener(
     "resize",

@@ -1,4 +1,4 @@
-import { ActionType } from "./constants";
+import { ActionType, MAX_SLICES, MIN_SLICES } from "./constants";
 import { WheelAction } from "./wheelActions";
 
 export type WheelSlice = {
@@ -11,32 +11,28 @@ export type WheelState = {
   bodies: Matter.Body[];
   height: number;
   width: number;
-  sliceCount: number;
-  slices?: WheelSlice[];
+  slices: WheelSlice[];
   sideBarOpen: boolean;
 };
 
 const defaultSlices = [
-  { text: "$4000" },
-  { text: "Lose A Turn" },
-  { text: "$550" },
-  { text: "$500" },
-  { text: "$400" },
-  { text: "$600" },
-  { text: "Bankrupt" },
-  { text: "$3500" },
-  { text: "$900" },
-  { text: "$0 Free Spin" },
-  { text: "Surprise" },
-  { text: "$50" },
-].map((item) => ({ ...item, isEditing: false }));
+  { text: "FAMILY FUED" },
+  { text: "GIVE 1 POINT" },
+  { text: "TAKE 1 POINT" },
+  { text: "PICK A SKIP" },
+  { text: "PICTIONARY" },
+  { text: "KAZOO" },
+  { text: "CHARADE" },
+  { text: "SKIP" },
+];
+
+
 
 export const defaultState: WheelState = {
   bodies: [],
   height: 700,
   width: 700,
   slices: defaultSlices,
-  sliceCount: defaultSlices.length,
   sideBarOpen: false,
 };
 
@@ -66,6 +62,19 @@ export const wheelReducer = (state = defaultState, action?: WheelAction) => {
             })
           : [],
       };
+    case ActionType.ADD_SLICE:
+      if (state.slices.length >= MAX_SLICES) return state;
+      return {
+        ...state,
+        slices: [...state.slices, action.payload],
+      };
+    case ActionType.REMOVE_SLICE:
+      if (state.slices.length <= MIN_SLICES) return state
+        return {
+          ...state,
+          slices: state.slices.filter((_, index) => index !== action.payload),
+        };
+      
     default:
       return state;
   }

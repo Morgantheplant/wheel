@@ -23,7 +23,7 @@ export const SliceSettingsInput = ({
     >
       <span
         style={{
-          color: 'white',
+          color: 'black',
           fontFamily: 'verdana',
           fontSize: "12px",
           left: "2px",

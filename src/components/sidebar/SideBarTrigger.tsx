@@ -27,9 +27,13 @@ export const SideBarTrigger = (props: { state: WheelState; dispatch: any }) => {
         right: "20px",
         top: "20px",
         transition: "transform .3s",
+        height: "30px",
+        width: "30px",
+        backgroundColor: "red",
+        zIndex: "1000"
       }}
     >
-      <Hamburger fill="#b0b0be" height="24px" width="24px"  />
+      <Hamburger style={{pointerEvents: "none"}} fill="#b0b0be" height="24px" width="24px"  />
     </button>
   );
 };

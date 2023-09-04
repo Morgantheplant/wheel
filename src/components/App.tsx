@@ -29,6 +29,7 @@ export const App = (props: { reset: () => void }) => {
   return (
     <main store={store as ReturnType<typeof createStore>}>
       <div
+        id="main__svg-container"      
         className="main__svg-container"
         style={{
           background: 'url("static/background.png")',
@@ -38,6 +39,7 @@ export const App = (props: { reset: () => void }) => {
           left: 0,
           right: 0,
           bottom: 0,
+          touchAction: "none"
         }}
         onMouseDown={(e) => {
           setStyles(e.target as HTMLElement, { cursor: "grabbing" });
@@ -54,7 +56,6 @@ export const App = (props: { reset: () => void }) => {
         <Wheel
           center={center}
           radius={radius}
-          sliceCount={state.sliceCount}
           slices={state.slices}
           pegs={pegsSelector(state)}
           height={state.height}

@@ -4,5 +4,9 @@ export enum ActionType {
     UPDATE_SPIN_STATUS = "UPDATE_SPIN_STATUS",
     TOGGLE_SIDEBAR = "TOGGLE_SIDEBAR",
     UPDATE_WHEEL_SLICE = "UPDATE_WHEEL_SLICE",
+    ADD_SLICE = "ADD_SLICE",
+    REMOVE_SLICE = "REMOVE_SLICE"
   }
   
+  export const MAX_SLICES = 10;
+  export const MIN_SLICES = 2;

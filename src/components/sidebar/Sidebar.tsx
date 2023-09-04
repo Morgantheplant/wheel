@@ -1,6 +1,9 @@
 import _render from "packages/render";
 import { sidebarSelector } from "src/selectors/sidebarSelector";
 import {
+  addSlice,
+  MAX_SLICES,
+  removeSlice,
   toggleSidebar,
   updateWheelSlice,
   WheelSlice,
@@ -12,12 +15,11 @@ import { SideBarFade } from "./SideBarFade";
 import { SideBarTrigger } from "./SideBarTrigger";
 import { SliceSettings } from "./SliceSettings";
 
-
 const sidebarTrasform = (sideBarOpen: boolean) => ({
   style: {
     transform: `translateX(${sideBarOpen ? 0 : "110%"})`,
   },
-})
+});
 
 export const SideBar = (props: {
   dispatch: WheelStore["dispatch"];
@@ -39,6 +41,8 @@ export const SideBar = (props: {
           top: "0",
           transition: "transform 1s cubic-bezier(0.16, 1, 0.3, 1)",
           width: "300px",
+          paddingBottom: "40px",
+          overflowY: "scroll",
         }}
       >
         <button
@@ -52,9 +56,9 @@ export const SideBar = (props: {
             margin: "10px",
           }}
         >
-          <Close width="24px" height="24px" color={"black"}/>
+          <Close width="24px" height="24px" color={"black"} />
         </button>
-        <form style={{ padding: "0px 20px" }}>
+        <aside style={{ padding: "0px 20px" }}>
           {props.state.slices?.map((slice: WheelSlice, index: number) => {
             return (
               <SliceSettings
@@ -77,12 +81,31 @@ export const SideBar = (props: {
                     })
                   )
                 }
+                onRemove={(index) => {
+                  props.dispatch(removeSlice(index));
+                }}
                 slice={slice}
-                total={props.state.slices?.length || 0}
+                total={props.state.slices.length}
               />
             );
           })}
-        </form>
+          <button
+            style={{
+              backgroundColor: "white",
+              borderRadius: "8px",
+              margin: "40px auto",
+              width: "100%",
+              padding: "10px",
+              border: "none",
+            }}
+            disabled={props.state.slices.length >= MAX_SLICES}
+            onClick={() => {
+              props.dispatch(addSlice({ text: "Enter Text" }));
+            }}
+          >
+            Add Slice +
+          </button>
+        </aside>
       </div>
     </fragment>
   );

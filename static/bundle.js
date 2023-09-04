@@ -11044,28 +11044,27 @@
         ActionType["UPDATE_SPIN_STATUS"] = "UPDATE_SPIN_STATUS";
         ActionType["TOGGLE_SIDEBAR"] = "TOGGLE_SIDEBAR";
         ActionType["UPDATE_WHEEL_SLICE"] = "UPDATE_WHEEL_SLICE";
+        ActionType["ADD_SLICE"] = "ADD_SLICE";
+        ActionType["REMOVE_SLICE"] = "REMOVE_SLICE";
     })(ActionType || (ActionType = {}));
+    const MAX_SLICES = 10;
+    const MIN_SLICES = 2;
 
     const defaultSlices = [
-        { text: "$4000" },
-        { text: "Lose A Turn" },
-        { text: "$550" },
-        { text: "$500" },
-        { text: "$400" },
-        { text: "$600" },
-        { text: "Bankrupt" },
-        { text: "$3500" },
-        { text: "$900" },
-        { text: "$0 Free Spin" },
-        { text: "Surprise" },
-        { text: "$50" },
-    ].map((item) => (Object.assign(Object.assign({}, item), { isEditing: false })));
+        { text: "FAMILY FUED" },
+        { text: "GIVE 1 POINT" },
+        { text: "TAKE 1 POINT" },
+        { text: "PICK A SKIP" },
+        { text: "PICTIONARY" },
+        { text: "KAZOO" },
+        { text: "CHARADE" },
+        { text: "SKIP" },
+    ];
     const defaultState = {
         bodies: [],
         height: 700,
         width: 700,
         slices: defaultSlices,
-        sliceCount: defaultSlices.length,
         sideBarOpen: false,
     };
     const wheelReducer = (state = defaultState, action) => {
@@ -11086,6 +11085,14 @@
                             return i !== index ? slice : Object.assign(Object.assign({}, slice), rest);
                         })
                         : [] });
+            case ActionType.ADD_SLICE:
+                if (state.slices.length >= MAX_SLICES)
+                    return state;
+                return Object.assign(Object.assign({}, state), { slices: [...state.slices, action.payload] });
+            case ActionType.REMOVE_SLICE:
+                if (state.slices.length <= MIN_SLICES)
+                    return state;
+                return Object.assign(Object.assign({}, state), { slices: state.slices.filter((_, index) => index !== action.payload) });
             default:
                 return state;
         }
@@ -11100,6 +11107,8 @@
     const updateViewportSize = createAction(ActionType.UPDATE_VIEWPORT_SIZE);
     const toggleSidebar = createAction(ActionType.TOGGLE_SIDEBAR);
     const updateWheelSlice = createAction(ActionType.UPDATE_WHEEL_SLICE);
+    const addSlice = createAction(ActionType.ADD_SLICE);
+    const removeSlice = createAction(ActionType.REMOVE_SLICE);
 
     const store = createStore(wheelReducer, defaultState);
 
@@ -11212,6 +11221,26 @@
                 },
             },
         });
+        matterExports.Mouse.clearSourceEvents(mouse);
+        // // https://github.com/liabru/matter-js/issues/84
+        mouse.element.removeEventListener("DOMMouseScroll", mouse.mousewheel);
+        mouse.element.removeEventListener("mousewheel", mouse.mousewheel);
+        const events = {
+            touchmove: mouse.mousemove,
+            touchstart: mouse.mousedown,
+            touchend: mouse.mouseup,
+            mousemove: mouse.mousemove,
+            mousedown: mouse.mousedown,
+            mouseup: mouse.mouseup,
+        };
+        // monkey patch preventDefault to avoid runtime error in Chrome
+        Object.entries(events).forEach(([eventName, eventHandler]) => {
+            mouse.element.removeEventListener(eventName, eventHandler);
+            mouse.element.addEventListener(eventName, (e) => {
+                e.preventDefault = () => { };
+                eventHandler(e);
+            });
+        });
         mouseConstraint.collisionFilter.mask = collisionFilterMask;
         return [mouse, mouseConstraint];
     };
@@ -11305,10 +11334,11 @@
             // add all of the bodies to the world
             matterExports.Composite.add(engine.world, entityGroup);
         });
+        const mouse = mouseEntities[0];
         if (options === null || options === void 0 ? void 0 : options.debug) {
             createDebugger({
                 engine,
-                mouse: mouseEntities[0],
+                mouse,
                 screenHeight,
                 screenWidth,
                 store,
@@ -11344,7 +11374,7 @@
             },
             start: () => {
                 AppContext = initEntities(store, options);
-            },
+            }
         };
     };
 
@@ -11449,10 +11479,10 @@
                 color: "black",
                 fontWeight: "bold",
                 fontFamily: "'Alfa Slab One', verdana",
-                fontSize: "calc(0.75rem + 1vw)",
+                fontSize: "calc(0.7rem + 0.7vw)",
                 top: toPx(props.wheelRadius - (height / 2) - y),
                 left: toPx((width / 2) - x),
-                transform: `rotate(${270 - angle}deg) translateX(50px)`,
+                transform: `rotate(${270 - angle}deg) translateX(30px)`,
                 transformOrigin: "center",
                 WebkitTextStrokeColor: "white",
                 WebkitTextStrokeWidth: "1px",
@@ -11468,9 +11498,8 @@
     };
 
     const WheelTextGroup = (props) => {
-        const textValues = props.slices || Array.from({ length: props.sliceCount });
-        return (_render.createElement("div", { className: props.className }, textValues.map((slice, i) => {
-            return (_render.createElement(WheelText, { wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius, totalSlices: props.sliceCount, index: i }, (slice === null || slice === void 0 ? void 0 : slice.text) || `$${i + 1}000`));
+        return (_render.createElement("div", { className: props.className }, props.slices.map((slice, i) => {
+            return (_render.createElement(WheelText, { wheelCenter: props.wheelCenter, wheelRadius: props.wheelRadius, totalSlices: props.slices.length, index: i }, (slice === null || slice === void 0 ? void 0 : slice.text) || `$${i + 1}000`));
         })));
     };
 
@@ -11496,7 +11525,7 @@
     const Wheel = (props) => (_render.createElement("fragment", null,
         _render.createElement("div", { connect: wheelGroupTransform, selector: wheelSelector$1 },
             _render.createElement(SvgBackground, { width: props.radius * 2, height: props.radius * 2 },
-                _render.createElement("circle", { className: "wheel__background", fill: "rgba(196, 228, 245, 0.5)", stroke: "black", cx: props.radius, cy: props.radius, r: props.radius, style: {
+                _render.createElement("circle", { id: "wheel-circle", className: "wheel__background", fill: "rgba(196, 228, 245, 0.5)", stroke: "black", cx: props.radius, cy: props.radius, r: props.radius, style: {
                         strokeWidth: "5px",
                         transformBox: "fill-box",
                         transformOrigin: "center center",
@@ -11509,7 +11538,7 @@
                     } }),
                 _render.createElement(WheelSliceGroup, { className: "wheel__slices", slices: props.slices || [], wheelCenter: { x: props.radius, y: props.radius }, wheelRadius: props.radius }),
                 _render.createElement(PegGroup, { className: "wheel__pegs", pegs: props.pegs, wheelRadius: props.radius, width: props.width })),
-            _render.createElement(WheelTextGroup, { className: "wheel__slices-text", slices: props.slices, sliceCount: props.sliceCount, wheelCenter: { x: props.radius, y: props.radius }, wheelRadius: props.radius }))));
+            _render.createElement(WheelTextGroup, { className: "wheel__slices-text", slices: props.slices, wheelCenter: { x: props.radius, y: props.radius }, wheelRadius: props.radius }))));
 
     const stopperSelector = findBodyById(STOPPER);
     const toPoints = (values) => values.map((item) => item.join(" ")).join(",");
@@ -11560,6 +11589,8 @@
             } }));
     };
 
+    const getSliceCount = (state) => state.slices.length;
+
     // translate indices at start and end of circle
     const circularIndexResolver = (total) => (index) => {
         switch (true) {
@@ -11575,14 +11606,15 @@
     const degreesToAbsoluteAngle = (angle) => ((angle % 360) + 360) % 360;
     const isOutsideOfThreshold = (threshold) => threshold > 0.8 || threshold < 0.2;
     const calculateScoreboardIndex = (angle, state) => {
-        const angleSize = 360 / state.sliceCount;
+        const sliceCount = getSliceCount(state);
+        const angleSize = 360 / sliceCount;
         const startPositionOffset = angleSize / 2;
         const angleInDegrees = degreesToAbsoluteAngle(radiansToDegrees(angle) + startPositionOffset);
         const rawIndex = Math.floor(angleInDegrees / angleSize);
-        const index = rawIndex > 0 ? state.sliceCount - rawIndex : 0;
+        const index = rawIndex > 0 ? sliceCount - rawIndex : 0;
         const threshold = (angleInDegrees / angleSize) - rawIndex;
         const shouldCheckStopper = isOutsideOfThreshold(threshold);
-        const getIndexFromCircle = circularIndexResolver(state.sliceCount);
+        const getIndexFromCircle = circularIndexResolver(sliceCount);
         const stopper = findBodyById(STOPPER)(state);
         if (shouldCheckStopper) {
             const stopperIsRight = stopper.angle < -0.5;
@@ -11731,8 +11763,12 @@
                 right: "20px",
                 top: "20px",
                 transition: "transform .3s",
+                height: "30px",
+                width: "30px",
+                backgroundColor: "red",
+                zIndex: "1000"
             } },
-            _render.createElement(Hamburger, { fill: "#b0b0be", height: "24px", width: "24px" })));
+            _render.createElement(Hamburger, { style: { pointerEvents: "none" }, fill: "#b0b0be", height: "24px", width: "24px" })));
     };
 
     const SliceSettingsInput = ({ backgroundColor = "#303030", label, name, onChange, value, }) => {
@@ -11742,7 +11778,7 @@
                 position: "relative",
             } },
             _render.createElement("span", { style: {
-                    color: 'white',
+                    color: 'black',
                     fontFamily: 'verdana',
                     fontSize: "12px",
                     left: "2px",
@@ -11763,10 +11799,24 @@
                 }, value: value })));
     };
 
-    const SliceSettings = ({ index, onChange, slice, total, }) => {
-        const { color1 } = getWheelColors({ index, total });
-        return (_render.createElement("div", { className: "sidebar__settings", style: { display: "flex" } },
-            _render.createElement(SliceSettingsInput, { backgroundColor: slice.color || color1, label: `Slice ${index + 1} Text:`, name: `slice-${index}-text`, onChange: onChange, value: slice.text })));
+    const SliceSettings = ({ index, onChange, onRemove, slice, total, }) => {
+        const { color1 } = getWheelColors({ index: index === 0 ? total - 1 : index - 1, total });
+        return (_render.createElement("div", { className: "sidebar__settings", style: { display: "flex", justifyContent: 'space-between' } },
+            _render.createElement(SliceSettingsInput, { backgroundColor: slice.color || color1, label: `Slice ${index + 1} Text:`, name: `slice-${index}-text`, onChange: onChange, value: slice.text }),
+            _render.createElement("div", null,
+                _render.createElement("button", { style: {
+                        height: "30px",
+                        width: "30px",
+                        marginTop: "29px",
+                        padding: "0",
+                        backgroundColor: "rgba(0,0,0,0)",
+                        border: "none",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                    }, title: "remove slice", onClick: () => {
+                        onRemove(index);
+                    } },
+                    _render.createElement(Close, { width: "20px", height: "20px", color: "black" })))));
     };
 
     const sidebarTrasform = (sideBarOpen) => ({
@@ -11787,6 +11837,8 @@
                     top: "0",
                     transition: "transform 1s cubic-bezier(0.16, 1, 0.3, 1)",
                     width: "300px",
+                    paddingBottom: "40px",
+                    overflowY: "scroll",
                 } },
                 _render.createElement("button", { onClick: () => {
                         props.dispatch(toggleSidebar(false));
@@ -11797,15 +11849,27 @@
                         margin: "10px",
                     } },
                     _render.createElement(Close, { width: "24px", height: "24px", color: "black" })),
-                _render.createElement("form", { style: { padding: "0px 20px" } }, (_a = props.state.slices) === null || _a === void 0 ? void 0 : _a.map((slice, index) => {
-                    var _a;
-                    return (_render.createElement(SliceSettings, { index: index, onChange: ({ color, hidden, text, }) => props.dispatch(updateWheelSlice({
-                            color,
-                            hidden,
-                            index,
-                            text,
-                        })), slice: slice, total: ((_a = props.state.slices) === null || _a === void 0 ? void 0 : _a.length) || 0 }));
-                })))));
+                _render.createElement("aside", { style: { padding: "0px 20px" } }, (_a = props.state.slices) === null || _a === void 0 ? void 0 :
+                    _a.map((slice, index) => {
+                        return (_render.createElement(SliceSettings, { index: index, onChange: ({ color, hidden, text, }) => props.dispatch(updateWheelSlice({
+                                color,
+                                hidden,
+                                index,
+                                text,
+                            })), onRemove: (index) => {
+                                props.dispatch(removeSlice(index));
+                            }, slice: slice, total: props.state.slices.length }));
+                    }),
+                    _render.createElement("button", { style: {
+                            backgroundColor: "white",
+                            borderRadius: "8px",
+                            margin: "40px auto",
+                            width: "100%",
+                            padding: "10px",
+                            border: "none",
+                        }, disabled: props.state.slices.length >= MAX_SLICES, onClick: () => {
+                            props.dispatch(addSlice({ text: "Enter Text" }));
+                        } }, "Add Slice +")))));
     };
 
     const wheelInititalPosition = (state) => {
@@ -11822,7 +11886,7 @@
         const state = store.getState();
         const { center, radius } = wheelInititalPosition(state);
         return (_render.createElement("main", { store: store },
-            _render.createElement("div", { className: "main__svg-container", style: {
+            _render.createElement("div", { id: "main__svg-container", className: "main__svg-container", style: {
                     background: 'url("static/background.png")',
                     userSelect: "none",
                     position: 'absolute',
@@ -11830,13 +11894,14 @@
                     left: 0,
                     right: 0,
                     bottom: 0,
+                    touchAction: "none"
                 }, onMouseDown: (e) => {
                     setStyles(e.target, { cursor: "grabbing" });
                 }, onMouseUp: (e) => {
                     setStyles(e.target, { cursor: "grab" });
                 } },
                 _render.createElement(Stand, { height: state.height, wheelCenter: center, wheelRadius: radius }),
-                _render.createElement(Wheel, { center: center, radius: radius, sliceCount: state.sliceCount, slices: state.slices, pegs: pegsSelector(state), height: state.height, width: state.width }),
+                _render.createElement(Wheel, { center: center, radius: radius, slices: state.slices, pegs: pegsSelector(state), height: state.height, width: state.width }),
                 _render.createElement(Stopper, null),
                 _render.createElement(Scoreboard, null)),
             _render.createElement(Title, null, "Wheel of Misfortune"),
@@ -11879,6 +11944,15 @@
             selector: "#entry-point",
         });
         domEntry.start();
+        // handle full re-render for adding removing slices
+        let sliceCount = getSliceCount(store.getState());
+        store.subscribe((state) => {
+            const currentSliceCount = getSliceCount(state);
+            if (currentSliceCount !== sliceCount) {
+                sliceCount = currentSliceCount;
+                domEntry.reset();
+            }
+        });
         // add window resize events
         window.addEventListener("resize", debounce(() => {
             store.dispatch(updateViewportSize({

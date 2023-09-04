@@ -1,4 +1,4 @@
-import { Engine, Runner, Composite, Body, Events } from "matter-js";
+import { Engine, Runner, Composite, Body, Events, Mouse } from "matter-js";
 import { updatePosition, WheelStore } from "../store/wheelSlice";
 import { createStopperEntities } from "./createStopperEntities";
 import { createWheelEntities } from "./createWheelEntities";
@@ -83,10 +83,12 @@ export const initEntities = (
     }
   );
 
+  const mouse = mouseEntities[0];
+
   if (options?.debug) {
     createDebugger({
       engine,
-      mouse: mouseEntities[0],
+      mouse,
       screenHeight,
       screenWidth,
       store,
@@ -135,6 +137,6 @@ export const initPhysics = (
     },
     start: () => {
       AppContext = initEntities(store, options);
-    },
+    }
   };
 };
