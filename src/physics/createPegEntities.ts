@@ -34,6 +34,7 @@ export const createPegEntities = ({
         initialXPosition: coords.x,
         initialYPosition: coords.y,
       },
+      density: 0.5
     });
 
     const pegConstraint = Constraint.create({

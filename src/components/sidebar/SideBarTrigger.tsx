@@ -29,7 +29,7 @@ export const SideBarTrigger = (props: { state: WheelState; dispatch: any }) => {
         transition: "transform .3s",
         height: "30px",
         width: "30px",
-        backgroundColor: "red",
+        backgroundColor: "none",
         zIndex: "1000"
       }}
     >

@@ -21,6 +21,7 @@ export const createStopperEntities = ({
     stopperHeight,
     {
       collisionFilter: stopperCollisionFilter,
+      density: 1,
       label: STOPPER,
       plugin: {
         initialWidth: stopperWidth,
