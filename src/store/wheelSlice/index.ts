@@ -5,9 +5,9 @@ export * from "./constants"
 export * from "./wheelActions"
 export * from "./wheelReducer"
 
-export const store = createStore<WheelState, WheelAction>(
-    wheelReducer,
-    defaultState
-  );
+export const createWheelStore = () => createStore<WheelState, WheelAction>(
+  wheelReducer,
+  defaultState
+);
   
 export type WheelStore = Store<WheelState, WheelAction>

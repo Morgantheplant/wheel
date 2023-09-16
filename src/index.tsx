@@ -1,73 +1,83 @@
 import _render, { renderToDOM } from "packages/render";
 import { initPhysics } from "./physics/base";
 import { App } from "./components/App";
-import { store, updateViewportSize } from "./store/wheelSlice";
+import {
+  WheelStore,
+  createWheelStore,
+  updateViewportSize,
+} from "./store/wheelSlice";
 import { debounce } from "./utils/debounce";
 import { getSliceCount } from "./selectors/getSliceCount";
 
-const initDOM = (options: {
+const initDOM = ({
+  onBeforeReset,
+  onBeforeStart,
+  selector,
+  store,
+}: {
   onBeforeStart: () => void;
   onBeforeReset: () => void;
-  entry?: Element;
   selector: string;
+  store: WheelStore;
 }) => {
-  let DOMContext = options;
-  const reset = () => {
-    options.onBeforeReset();
-    DOMContext.entry?.firstChild?.remove();
-    DOMContext.entry = renderToDOM(DOMContext.selector, <App reset={reset} />);
-  };
+  let entry: Element;
   return {
     start: () => {
-      options.onBeforeStart();
-      DOMContext.entry = renderToDOM(
-        DOMContext.selector,
-        <App reset={reset} />
-      );
+      onBeforeStart();
+      entry = renderToDOM(selector, <App _store={store} />);
     },
-    reset,
+    reset: () => {
+      onBeforeReset();
+      entry?.firstChild?.remove();
+      entry = renderToDOM(selector, <App _store={store} />);
+    },
   };
 };
 
 const initApp = () => {
-  // update store with inital viewport size
-  store.dispatch(
-    updateViewportSize({ height: window.innerHeight, width: window.innerWidth })
-  );
+  const store = createWheelStore();
+
+  
+  let sliceCount = getSliceCount(store.getState());
+  const resetStore = () => {
+    store.reset();
+    // handle full re-render for adding removing slices
+    store.subscribe((state) => {
+      const currentSliceCount = getSliceCount(state);
+      if (currentSliceCount !== sliceCount) {
+        sliceCount = currentSliceCount;
+        domEntry.reset();
+      }
+    });
+    // handle updating to Window size
+    store.dispatch(
+      updateViewportSize({
+        height: window.innerHeight,
+        width: window.innerWidth,
+      })
+    );
+  };
 
   /* ---  TOGGLE DEBUG HERE  --- */
   const physicsEntry = initPhysics(store, { debug: false });
+
   const domEntry = initDOM({
-    onBeforeStart: () => physicsEntry.start(),
-    onBeforeReset: () => physicsEntry.reset(),
+    onBeforeStart: () => {
+      resetStore();
+      physicsEntry.start();
+    },
+    onBeforeReset: () => {
+      resetStore();
+      physicsEntry.reset();
+    },
     selector: "#entry-point",
+    store,
   });
 
   domEntry.start();
 
-  // handle full re-render for adding removing slices
-  let sliceCount = getSliceCount(store.getState());
-  store.subscribe((state) => {
-    const currentSliceCount = getSliceCount(state);
-    if (currentSliceCount !== sliceCount) {
-      sliceCount = currentSliceCount;
-      domEntry.reset();
-    }
-  });
-
   // add window resize events
-  window.addEventListener(
-    "resize",
-    debounce(() => {
-      store.dispatch(
-        updateViewportSize({
-          height: window.innerHeight,
-          width: window.innerWidth,
-        })
-      );
-      domEntry.reset();
-    }, 100)
-  );
+  window.addEventListener("resize", debounce(domEntry.reset, 100));
 };
 
 document.addEventListener("DOMContentLoaded", initApp);

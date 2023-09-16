@@ -23,7 +23,6 @@ const sidebarTrasform = (sideBarOpen: boolean) => ({
 
 export const SideBar = (props: {
   dispatch: WheelStore["dispatch"];
-  reset: () => void;
   state: WheelState;
 }) => {
   return (

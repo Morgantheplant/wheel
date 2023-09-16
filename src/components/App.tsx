@@ -1,16 +1,14 @@
 import _render, { setStyles } from "packages/render";
-
-import { SvgBackground } from "./SvgBackground";
 import { Wheel } from "./wheel/Wheel";
 import { Stopper } from "./stand/Stopper";
 import { Stand } from "./stand/Stand";
 import { Scoreboard } from "./stand/Scoreboard";
 import { wheelSelector } from "../selectors/wheelSelector";
 import { pegsSelector } from "../selectors/pegSelector";
-import { createStore } from "packages/store/createStore";
 import { Title } from "./title/Title";
 import { SideBar } from "./sidebar/SideBar";
-import { store, WheelState } from "src/store/wheelSlice";
+import { WheelState, WheelStore } from "src/store/wheelSlice";
+import { createStore } from "packages/store/createStore";
 
 const wheelInititalPosition = (state: WheelState) => {
   const wheel = wheelSelector(state);
@@ -23,7 +21,7 @@ const wheelInititalPosition = (state: WheelState) => {
   };
 };
 
-export const App = (props: { reset: () => void }) => {
+export const App = ({ _store: store }: { _store: WheelStore }) => {
   const state = store.getState();
   const { center, radius } = wheelInititalPosition(state);
   return (
@@ -66,7 +64,7 @@ export const App = (props: { reset: () => void }) => {
         <Scoreboard />
       </div>
       <Title>Wheel of Misfortune</Title>
-      <SideBar reset={props.reset} state={state} dispatch={store.dispatch} />
+      <SideBar state={state} dispatch={store.dispatch} />
     </main>
   );
 };

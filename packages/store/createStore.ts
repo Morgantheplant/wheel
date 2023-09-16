@@ -5,7 +5,9 @@ export type Store <S extends object, A extends object>= {
   dispatch: (action: A) => void;
   getState: ()=> S,
   subscribe: (handler: Listener<S>)=> void; 
-  unsubscribe: (listenerToRemove: Listener<S>)=> void 
+  unsubscribe: (listenerToRemove: Listener<S>)=> void
+  reset: () => void;
+  listeners:  Listener<S>[];
 } 
 
 export const createStore = <S extends object, A extends object>(
@@ -23,10 +25,15 @@ export const createStore = <S extends object, A extends object>(
     getState: (): S => state,
     subscribe: (handler: Listener<S>): void => {
       listeners.push(handler);
+      (window as any).items = listeners
       handler(state);
     },
     unsubscribe: (listenerToRemove: Listener<S>): void => {
       listeners = listeners.filter((listener) => listener != listenerToRemove);
     },
+    reset: () => {
+      listeners = []
+    },
+    listeners
   };
 };
